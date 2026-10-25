@@ -144,18 +144,44 @@ def logout_view(request):
 
 @login_required(login_url='login')
 def home(request):
+    if request.user.is_staff or request.user.is_superuser:
+        context = {
+            'total_users': User.objects.count(),
+            'total_infos': Info.objects.count(),
+            'moods': [
+                {
+                    'label': category.name,
+                    'value': MoodEntry.objects.filter(category=category).count(),
+                }
+                for category in MoodCategory.objects.all().order_by('name')
+            ],
+        }
+        return render(request, 'home.html', context)
+    
+    user_entries = MoodEntry.objects.filter(user=request.user).select_related('category')
     context = {
-        'total_users': User.objects.count(),
-        'total_infos': Info.objects.count(),
-        'moods': [
+        'my_entries_count': user_entries.count(),
+        'my_moods': [
             {
-                'label': category.name,
-                'value': MoodEntry.objects.filter(category=category).count(),
+                'label': entry.category.name,
+                'value': 1,
             }
-            for category in MoodCategory.objects.all().order_by('name')
+            for entry in user_entries
         ],
+        'recent_entries': user_entries.order_by('-created_at')[:5] if hasattr(MoodEntry, 'created_at') else user_entries.order_by('-id')[:5],
     }
-    return render(request, 'home.html', context)
+    # Aggregate by category for user
+    from django.db.models import Count
+    mood_stats = (
+        user_entries.values('category__name')
+        .annotate(count=Count('id'))
+        .order_by('category__name')
+    )
+    context['mood_stats'] = [
+        {'label': item['category__name'], 'value': item['count']}
+        for item in mood_stats
+    ]
+    return render(request, 'home_user.html', context)
 
 
 @require_http_methods(['GET', 'POST'])

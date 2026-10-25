@@ -1,0 +1,122 @@
+{% extends "theme/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none" aria-label="Page header">
+    <div class="container-xl">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="page-pretitle">Overview</div>
+          <h2 class="page-title mb-0">My Dashboard</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+  <br>
+
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="text-secondary">My Mood Entries</div>
+          <div class="h1 mb-0">{{ my_entries_count }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        <div class="card-header">My Mood Distribution</div>
+        <div class="card-body">
+          <div id="chart-my-moods"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-6">
+      <div class="card">
+        <div class="card-header">Recent Entries</div>
+        <div class="card-body">
+          {% if recent_entries %}
+          <div class="list-group list-group-flush">
+            {% for entry in recent_entries %}
+            <div class="list-group-item">
+              <div class="row align-items-center">
+                <div class="col text-truncate">
+                  <div class="text-body d-block">{{ entry.category.name }}</div>
+                  <div class="text-secondary text-truncate mt-n1">
+                    {% if entry.notes %}{{ entry.notes|truncatechars:60 }}{% else %}No notes{% endif %}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  {% if entry.rating %}<span class="badge bg-blue-lt">{{ entry.rating }}/10</span>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-muted">No entries yet.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'libs/apexcharts/dist/apexcharts.min.js' %}"></script>
+<script>
+  (function () {
+    var attempts = 0;
+    var maxAttempts = 60;
+
+    function renderChart() {
+      var el = document.getElementById("chart-my-moods");
+      if (!el) { return; }
+      
+      if (typeof ApexCharts === 'undefined') {
+        attempts++;
+        if (attempts < maxAttempts) {
+          setTimeout(renderChart, 100);
+          return;
+        }
+        el.innerHTML = '<div class="text-danger">Failed to load chart library.</div>';
+        return;
+      }
+
+      var series = [{% for stat in mood_stats %}{{ stat.value|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
+      var labels = [{% for stat in mood_stats %}"{{ stat.label|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+
+      if (!series.length || series.every(function(v){ return v === 0; })) {
+        el.innerHTML = '<div class="text-muted">No mood data available.</div>';
+        return;
+      }
+
+      try {
+        var chart = new ApexCharts(el, {
+          chart: { type: "pie", height: 320 },
+          labels: labels,
+          series: series,
+          legend: { position: "bottom" },
+          dataLabels: { enabled: true, formatter: function (val) { return val.toFixed(1) + "%"; } },
+          tooltip: { y: { formatter: function (val, opts) { var label = opts.w.globals.labels[opts.seriesIndex]; return label + ": " + val; } } },
+        });
+        chart.render();
+      } catch (e) {
+        console.error('Failed to render chart', e);
+        el.innerHTML = '<div class="text-danger">Error rendering chart.</div>';
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', renderChart);
+    } else {
+      renderChart();
+    }
+  })();
+</script>
+{% endblock %}

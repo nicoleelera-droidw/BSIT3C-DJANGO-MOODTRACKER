@@ -28,7 +28,11 @@
     <div class="page">
 
         {% if request.user.is_authenticated %}
-            {% include 'theme/sidebar.html' %}
+            {% if request.user.is_staff or request.user.is_superuser %}
+                {% include 'theme/sidebar.html' %}
+            {% else %}
+                {% include 'theme/sidebar_user.html' %}
+            {% endif %}
         {% else %}
             {% include 'theme/public_sidebar.html' %}
         {% endif %}
