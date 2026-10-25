@@ -1,0 +1,55 @@
+{% extends "theme/base.html" %}
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none" aria-label="Page header">
+    <div class="container-xl">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="page-pretitle">Overview</div>
+          <h2 class="page-title mb-0">New Mood Entry</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+  <br>
+
+  <div class="card" style="max-width: 720px;">
+    <div class="card-body">
+      <form method="POST" action="{% url 'mood_entry:mood_entry_create' %}">
+        {% csrf_token %}
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-danger">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+
+        <div class="mb-3">
+          <label class="form-label required">Mood Category</label>
+          <select name="category" id="id_category" class="form-select" required>
+            <option value="">-- Choose a mood --</option>
+            {% for category in categories %}
+            <option value="{{ category.id }}">{{ category.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Rating</label>
+          <input type="number" name="rating" id="id_rating" class="form-control" min="1" max="10" placeholder="1 - 10">
+          <div class="form-hint">Optional. A whole number between 1 and 10.</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Notes</label>
+          <textarea name="notes" id="id_notes" class="form-control" rows="4" placeholder="How did you feel?"></textarea>
+        </div>
+
+        <div class="form-footer">
+          <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-ghost-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Save Mood Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

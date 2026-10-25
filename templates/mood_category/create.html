@@ -1,0 +1,39 @@
+{% extends "theme/base.html" %}
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none" aria-label="Page header">
+    <div class="container-xl">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="page-pretitle">Overview</div>
+          <h2 class="page-title mb-0">New Mood Category</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+  <br>
+
+  <div class="card" style="max-width: 720px;">
+    <div class="card-body">
+      <form method="POST" action="{% url 'mood_category:mood_category_create' %}">
+        {% csrf_token %}
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-danger">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+
+        <div class="mb-3">
+          <label class="form-label required">Mood Category</label>
+          <input type="text" name="name" id="id_name" class="form-control" placeholder="e.g. Happy, Sad, Anxious" required>
+        </div>
+
+        <div class="form-footer">
+          <a href="{% url 'mood_category:mood_category_list' %}" class="btn btn-ghost-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Save Mood Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
