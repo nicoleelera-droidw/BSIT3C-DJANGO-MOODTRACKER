@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.shortcuts import redirect, render
@@ -7,7 +7,12 @@ from django.shortcuts import redirect, render
 from .models import MoodCategory
 
 
+def _is_staff(user):
+    return user.is_staff or user.is_superuser
+
+
 @login_required(login_url='login')
+@user_passes_test(_is_staff, login_url='dashboard')
 def mood_category_list(request):
     """Render the searchable, paginated list of mood categories."""
     query = request.GET.get('q', '').strip()
@@ -28,6 +33,7 @@ def mood_category_list(request):
 
 
 @login_required(login_url='login')
+@user_passes_test(_is_staff, login_url='dashboard')
 def mood_category_create(request):
     """Render the mood category creation form and handle submissions."""
     if request.method == 'POST':

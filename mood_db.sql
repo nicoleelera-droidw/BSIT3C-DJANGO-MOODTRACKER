@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 28, 2026 at 04:39 PM
+-- Generation Time: Oct 26, 2026 at 12:58 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `bsitcrud`
+-- Database: `mood_db`
 --
 
 -- --------------------------------------------------------
@@ -141,7 +141,19 @@ INSERT INTO `auth_permission` (`id`, `name`, `content_type_id`, `codename`) VALU
 (77, 'Can add info', 20, 'add_info'),
 (78, 'Can change info', 20, 'change_info'),
 (79, 'Can delete info', 20, 'delete_info'),
-(80, 'Can view info', 20, 'view_info');
+(80, 'Can view info', 20, 'view_info'),
+(81, 'Can add mood category', 21, 'add_moodcategory'),
+(82, 'Can change mood category', 21, 'change_moodcategory'),
+(83, 'Can delete mood category', 21, 'delete_moodcategory'),
+(84, 'Can view mood category', 21, 'view_moodcategory'),
+(85, 'Can add mood entry', 22, 'add_moodentry'),
+(86, 'Can change mood entry', 22, 'change_moodentry'),
+(87, 'Can delete mood entry', 22, 'delete_moodentry'),
+(88, 'Can view mood entry', 22, 'view_moodentry'),
+(89, 'Can add message', 23, 'add_message'),
+(90, 'Can change message', 23, 'change_message'),
+(91, 'Can delete message', 23, 'delete_message'),
+(92, 'Can view message', 23, 'view_message');
 
 -- --------------------------------------------------------
 
@@ -168,8 +180,9 @@ CREATE TABLE `auth_user` (
 --
 
 INSERT INTO `auth_user` (`id`, `password`, `last_login`, `is_superuser`, `username`, `first_name`, `last_name`, `email`, `is_staff`, `is_active`, `date_joined`) VALUES
-(1, 'pbkdf2_sha256$720000$EcUWmJliC0ddFa1gTCmeBh$ZU8a1pV8OcMxx3+eTljRu20P0fOSNv1BumXEwFAS968=', '2026-09-28 14:38:39.705136', 1, 'glenn', 'Glenn', 'Azuelo', 'glennazuelo1@gmail.com', 1, 1, '2026-05-12 14:09:37.605739'),
-(2, 'pbkdf2_sha256$1200000$6tJ7297yjDHjAufSku1f6Q$/+XGBQy79azDzpUZ5QvzAQ7L3T608gS5zuB2/ATXeEc=', '2026-08-07 06:43:08.595063', 2, 'laravel', 'Laravel', 'Azuelo', 'glennazuelo12@gmail.com', 1, 1, '2026-06-25 10:30:12.000000');
+(1, 'pbkdf2_sha256$720000$EcUWmJliC0ddFa1gTCmeBh$ZU8a1pV8OcMxx3+eTljRu20P0fOSNv1BumXEwFAS968=', '2026-10-25 23:46:15.752409', 1, 'glenn', 'Glenn', 'Azuelo', 'glennazuelo1@gmail.com', 1, 1, '2026-05-12 14:09:37.605739'),
+(2, 'pbkdf2_sha256$1200000$6tJ7297yjDHjAufSku1f6Q$/+XGBQy79azDzpUZ5QvzAQ7L3T608gS5zuB2/ATXeEc=', '2026-08-07 06:43:08.595063', 2, 'laravel', 'Laravel', 'Azuelo', 'glennazuelo12@gmail.com', 1, 1, '2026-06-25 10:30:12.000000'),
+(14, 'pbkdf2_sha256$720000$BGFHyFe4nGKB6hMRGAonij$S9YW8xvJtl4b/2UFF1YeNr4kVTJ+Rd7QzHy5i0X/io0=', '2026-10-25 23:57:40.283419', 0, 'Kertzen', 'Kert', 'Villahermosa', 'Kzen@gmail.com', 0, 1, '2026-10-25 22:30:11.147779');
 
 -- --------------------------------------------------------
 
@@ -243,6 +256,9 @@ INSERT INTO `django_content_type` (`id`, `app_label`, `model`) VALUES
 (20, 'info', 'info'),
 (13, 'journal', 'journalentry'),
 (8, 'likes', 'like'),
+(23, 'message', 'message'),
+(21, 'mood_category', 'moodcategory'),
+(22, 'mood_entry', 'moodentry'),
 (7, 'posts', 'post'),
 (10, 'replies', 'comment'),
 (6, 'sessions', 'session'),
@@ -312,7 +328,10 @@ INSERT INTO `django_migrations` (`id`, `app`, `name`, `applied`) VALUES
 (42, 'students', '0004_tblstudents_user', '2026-08-07 06:30:49.635627'),
 (43, 'students', '0005_assign_student_ownership', '2026-08-07 06:30:49.642613'),
 (44, 'courses', '0009_delete_courseschedule', '2026-09-28 13:26:33.001214'),
-(45, 'info', '0001_initial', '2026-09-28 13:26:33.140759');
+(45, 'info', '0001_initial', '2026-09-28 13:26:33.140759'),
+(46, 'mood_category', '0001_initial', '2026-10-25 22:43:58.851226'),
+(47, 'mood_entry', '0001_initial', '2026-10-25 22:43:59.001915'),
+(48, 'message', '0001_initial', '2026-10-25 22:43:59.069226');
 
 -- --------------------------------------------------------
 
@@ -387,6 +406,68 @@ CREATE TABLE `tblinfo` (
 
 INSERT INTO `tblinfo` (`id`, `name`, `age`, `address`, `email`, `created_at`, `updated_at`, `user_id`) VALUES
 (1, 'Glenn Azuelo1', 30, 'cauayan', 'glennazuelo1@gmail.com', '2026-09-28 14:16:01.072631', '2026-09-28 14:16:13.176731', 1);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `tblmessage`
+--
+
+CREATE TABLE `tblmessage` (
+  `id` bigint(20) NOT NULL,
+  `body` longtext NOT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  `mood_entry_id` bigint(20) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `tblmoodcategory`
+--
+
+CREATE TABLE `tblmoodcategory` (
+  `id` bigint(20) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `tblmoodcategory`
+--
+
+INSERT INTO `tblmoodcategory` (`id`, `name`, `created_at`, `updated_at`) VALUES
+(1, 'Happy', '2026-10-25 22:51:59.843243', '2026-10-25 22:51:59.843298'),
+(2, 'Sad', '2026-10-25 22:54:52.684844', '2026-10-25 22:54:52.684875'),
+(3, 'Anxious', '2026-10-25 22:56:56.834473', '2026-10-25 22:56:56.834502'),
+(4, 'Stressed', '2026-10-25 22:59:44.046396', '2026-10-25 22:59:44.046432'),
+(5, 'Relieved', '2026-10-25 23:03:15.837521', '2026-10-25 23:03:15.837553'),
+(6, 'Angry', '2026-10-25 23:25:17.153644', '2026-10-25 23:25:17.153673');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `tblmoodentry`
+--
+
+CREATE TABLE `tblmoodentry` (
+  `id` bigint(20) NOT NULL,
+  `rating` smallint(5) UNSIGNED DEFAULT NULL CHECK (`rating` >= 0),
+  `notes` longtext NOT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  `category_id` bigint(20) NOT NULL,
+  `user_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `tblmoodentry`
+--
+
+INSERT INTO `tblmoodentry` (`id`, `rating`, `notes`, `created_at`, `updated_at`, `category_id`, `user_id`) VALUES
+(1, 1, 'Really Anxious', '2026-10-25 23:35:30.670033', '2026-10-25 23:35:30.670062', 3, 1);
 
 --
 -- Indexes for dumped tables
@@ -473,6 +554,28 @@ ALTER TABLE `tblinfo`
   ADD KEY `tblinfo_user_id_4a36749d_fk_auth_user_id` (`user_id`);
 
 --
+-- Indexes for table `tblmessage`
+--
+ALTER TABLE `tblmessage`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `tblmessage_mood_entry_id_be62cbcf_fk_tblmoodentry_id` (`mood_entry_id`);
+
+--
+-- Indexes for table `tblmoodcategory`
+--
+ALTER TABLE `tblmoodcategory`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `name` (`name`);
+
+--
+-- Indexes for table `tblmoodentry`
+--
+ALTER TABLE `tblmoodentry`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `tblmoodentry_category_id_6ed92824_fk_tblmoodcategory_id` (`category_id`),
+  ADD KEY `tblmoodentry_user_id_e5b1c43b_fk_auth_user_id` (`user_id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -492,13 +595,13 @@ ALTER TABLE `auth_group_permissions`
 -- AUTO_INCREMENT for table `auth_permission`
 --
 ALTER TABLE `auth_permission`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=81;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=93;
 
 --
 -- AUTO_INCREMENT for table `auth_user`
 --
 ALTER TABLE `auth_user`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `auth_user_groups`
@@ -522,18 +625,36 @@ ALTER TABLE `django_admin_log`
 -- AUTO_INCREMENT for table `django_content_type`
 --
 ALTER TABLE `django_content_type`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT for table `django_migrations`
 --
 ALTER TABLE `django_migrations`
-  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
 
 --
 -- AUTO_INCREMENT for table `tblinfo`
 --
 ALTER TABLE `tblinfo`
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `tblmessage`
+--
+ALTER TABLE `tblmessage`
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `tblmoodcategory`
+--
+ALTER TABLE `tblmoodcategory`
+  MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `tblmoodentry`
+--
+ALTER TABLE `tblmoodentry`
   MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
@@ -579,6 +700,19 @@ ALTER TABLE `django_admin_log`
 --
 ALTER TABLE `tblinfo`
   ADD CONSTRAINT `tblinfo_user_id_4a36749d_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`);
+
+--
+-- Constraints for table `tblmessage`
+--
+ALTER TABLE `tblmessage`
+  ADD CONSTRAINT `tblmessage_mood_entry_id_be62cbcf_fk_tblmoodentry_id` FOREIGN KEY (`mood_entry_id`) REFERENCES `tblmoodentry` (`id`);
+
+--
+-- Constraints for table `tblmoodentry`
+--
+ALTER TABLE `tblmoodentry`
+  ADD CONSTRAINT `tblmoodentry_category_id_6ed92824_fk_tblmoodcategory_id` FOREIGN KEY (`category_id`) REFERENCES `tblmoodcategory` (`id`),
+  ADD CONSTRAINT `tblmoodentry_user_id_e5b1c43b_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

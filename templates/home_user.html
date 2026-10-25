@@ -9,6 +9,7 @@
         <div class="col">
           <div class="page-pretitle">Overview</div>
           <h2 class="page-title mb-0">My Dashboard</h2>
+          <div class="text-muted mt-1">Welcome, {{ request.user.first_name|default:request.user.username }}! Track your mood and reflect on your journey.</div>
         </div>
       </div>
     </div>
