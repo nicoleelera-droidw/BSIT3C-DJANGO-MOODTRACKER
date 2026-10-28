@@ -4,58 +4,88 @@
 {% block content %}
 <div class="container-xl">
   {% include 'theme/messages.html' %}
-  <div class="page-header d-print-none" aria-label="Page header">
-    <div class="container-xl">
-      <div class="row align-items-center">
-        <div class="col">
-          <div class="page-pretitle">Overview</div>
-          <h2 class="page-title mb-0">My Dashboard</h2>
-          <div class="text-muted mt-1">Welcome, {{ request.user.first_name|default:request.user.username }}! Track your mood and reflect on your journey.</div>
+  <div class="dh-hero mb-3">
+    <div class="dh-hero-inner">
+      <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
+        <div>
+          <div class="dh-hero-pretitle">Your mood journey</div>
+          <div class="dh-hero-title">{{ greeting }}, {{ request.user.first_name|default:request.user.username }} <span class="dh-hero-emoji">💜</span></div>
+          <p class="dh-hero-sub mb-0">
+            {% if current_streak %}You're on a {{ current_streak }}-day check-in streak. Keep it going!{% else %}A quick check-in today helps you understand your patterns tomorrow.{% endif %}
+          </p>
         </div>
-        <div class="col-auto">
-          <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-primary">
-            <i class="ti ti-plus me-1"></i> New Mood Entry
-          </a>
-        </div>
+        <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-accent">
+          <i class="fas fa-plus me-1"></i> New Mood Entry
+        </a>
       </div>
+      {% if quick_moods %}
+      <div class="dh-mood-strip">
+        <span class="dh-mood-strip-label">How are you feeling?</span>
+        {% for mood in quick_moods %}
+        <a class="dh-mood-chip" href="{% url 'mood_entry:mood_entry_create' %}?category={{ mood.id }}">
+          <span class="dh-mood-emoji">{{ mood.emoji }}</span>{{ mood.name }}
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
   </div>
-  <br>
 
   <div class="row g-3 mb-3">
     <div class="col-6 col-xl-3">
-      <div class="card">
+      <div class="card dh-stat-card stat-card-primary">
         <div class="card-body">
-          <div class="text-secondary">My Mood Entries</div>
-          <div class="h1 mb-0">{{ my_entries_count }}</div>
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <div class="stat-label">My Mood Entries</div>
+              <div class="stat-value mt-2">{{ my_entries_count }}</div>
+              <div class="stat-note">moments captured</div>
+            </div>
+            <span class="stat-card-icon"><i class="fas fa-heart"></i></span>
+          </div>
         </div>
       </div>
     </div>
     <div class="col-6 col-xl-3">
-      <div class="card">
+      <div class="card dh-stat-card stat-card-info">
         <div class="card-body">
-          <div class="text-secondary">Last 7 Days</div>
-          <div class="h1 mb-0">{{ entries_last_7_days }}</div>
-          <div class="text-secondary small">entries recorded</div>
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <div class="stat-label">Last 7 Days</div>
+              <div class="stat-value mt-2">{{ entries_last_7_days }}</div>
+              <div class="stat-note">entries this week</div>
+            </div>
+            <span class="stat-card-icon"><i class="fas fa-calendar-week"></i></span>
+          </div>
         </div>
       </div>
     </div>
     <div class="col-6 col-xl-3">
-      <div class="card">
+      <div class="card dh-stat-card stat-card-warning">
         <div class="card-body">
-          <div class="text-secondary">Current Streak</div>
-          <div class="h1 mb-0">{{ current_streak }}</div>
-          <div class="text-secondary small">day{{ current_streak|pluralize }} in a row</div>
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <div class="stat-label">Current Streak</div>
+              <div class="stat-value mt-2">{{ current_streak }}</div>
+              <div class="stat-note">day{{ current_streak|pluralize }} in a row</div>
+            </div>
+            <span class="stat-card-icon"><i class="fas fa-fire"></i></span>
+          </div>
         </div>
       </div>
     </div>
     <div class="col-6 col-xl-3">
-      <div class="card">
+      <div class="card dh-stat-card stat-card-success">
         <div class="card-body">
-          <div class="text-secondary">Top Mood</div>
-          <div class="h1 mb-0">{{ top_mood.label|default:"—" }}</div>
-          <div class="text-secondary small">
-            {% if top_mood %}{{ top_mood.count }} entr{{ top_mood.count|pluralize:"y,ies" }}{% else %}No entries yet{% endif %}
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <div class="stat-label">Top Mood</div>
+              <div class="stat-value stat-value-text mt-2">{{ top_mood.label|default:"—" }}</div>
+              <div class="stat-note">
+                {% if top_mood %}{{ top_mood.count }} entr{{ top_mood.count|pluralize:"y,ies" }}{% else %}No entries yet{% endif %}
+              </div>
+            </div>
+            <span class="stat-card-icon"><i class="fas fa-face-smile"></i></span>
           </div>
         </div>
       </div>

@@ -1,7 +1,13 @@
 from datetime import timedelta
 
 from django.contrib import messages
-from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth import (
+    authenticate,
+    get_user_model,
+    login,
+    logout,
+    update_session_auth_hash,
+)
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -23,6 +29,34 @@ LOCK_DURATION = timedelta(minutes=1)
 TREND_DAYS = 14
 INVALID_LOGIN_MESSAGE = 'Invalid username or password.'
 LOCKED_MESSAGE = 'Too many failed attempts. Locked for 1 minute.'
+
+MOOD_EMOJI = {
+    'happy': '😊',
+    'sad': '😢',
+    'angry': '😠',
+    'anxious': '😟',
+    'relieved': '😌',
+    'stressed': '😰',
+    'lonely': '🫂',
+    'calm': '😌',
+}
+
+
+def _mood_emoji(name):
+    lowered = name.lower()
+    for keyword, emoji in MOOD_EMOJI.items():
+        if keyword in lowered:
+            return emoji
+    return '💭'
+
+
+def _greeting():
+    hour = timezone.localtime().hour
+    if hour < 12:
+        return 'Good morning'
+    if hour < 18:
+        return 'Good afternoon'
+    return 'Good evening'
 
 
 def _reset_lock_state(request):
@@ -162,6 +196,7 @@ def home(request):
 
     if request.user.is_staff or request.user.is_superuser:
         context = {
+            'greeting': _greeting(),
             'total_users': User.objects.count(),
             'total_infos': Info.objects.count(),
             'total_entries': MoodEntry.objects.count(),
@@ -202,6 +237,11 @@ def home(request):
         trend_values.append(trend_counts.get(day, 0))
 
     context = {
+        'greeting': _greeting(),
+        'quick_moods': [
+            {'id': mood['id'], 'name': mood['name'], 'emoji': _mood_emoji(mood['name'])}
+            for mood in MoodCategory.objects.order_by('name').values('id', 'name')[:6]
+        ],
         'my_entries_count': user_entries.count(),
         'entries_last_7_days': user_entries.filter(created_at__date__gte=today - timedelta(days=6)).count(),
         'current_streak': _current_streak(entry_dates, today),
@@ -251,3 +291,87 @@ def register_view(request):
         f'Welcome to Mood Tracker, {user.first_name}! Your account is ready.',
     )
     return redirect('dashboard')
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET', 'POST'])
+def profile_view(request):
+    user = request.user
+    form_data = {
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'email': user.email,
+    }
+    errors = {}
+
+    if request.method == 'POST':
+        form_data = {
+            'first_name': request.POST.get('first_name', '').strip(),
+            'last_name': request.POST.get('last_name', '').strip(),
+            'email': request.POST.get('email', '').strip(),
+        }
+
+        if not form_data['first_name']:
+            errors['first_name'] = 'First name is required.'
+        if not form_data['last_name']:
+            errors['last_name'] = 'Last name is required.'
+
+        if not form_data['email']:
+            errors['email'] = 'Email is required.'
+        else:
+            try:
+                validate_email(form_data['email'])
+            except ValidationError:
+                errors['email'] = 'Enter a valid email address.'
+            else:
+                if User.objects.filter(email=form_data['email']).exclude(pk=user.pk).exists():
+                    errors['email'] = 'Email is already in use.'
+
+        if not errors:
+            user.first_name = form_data['first_name']
+            user.last_name = form_data['last_name']
+            user.email = form_data['email']
+            user.save(update_fields=['first_name', 'last_name', 'email'])
+            messages.success(request, 'Profile updated successfully.')
+            return redirect('profile')
+
+    return render(request, 'profile.html', {
+        'form_data': form_data,
+        'errors': errors,
+        'my_entries_count': MoodEntry.objects.filter(user=user).count(),
+        'my_messages_count': Message.objects.filter(mood_entry__user=user).count(),
+    })
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET', 'POST'])
+def change_password_view(request):
+    errors = {}
+
+    if request.method == 'POST':
+        current_password = request.POST.get('current_password', '')
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+
+        if not request.user.check_password(current_password):
+            errors['current_password'] = 'Your current password is incorrect.'
+
+        if not new_password:
+            errors['new_password'] = 'New password is required.'
+        else:
+            try:
+                validate_password(new_password, request.user)
+            except ValidationError as exc:
+                errors['new_password'] = ' '.join(exc.messages)
+
+        if new_password != confirm_password:
+            errors['confirm_password'] = 'Passwords do not match.'
+
+        if not errors:
+            request.user.set_password(new_password)
+            request.user.save(update_fields=['password'])
+            update_session_auth_hash(request, request.user)
+            messages.success(request, 'Password updated successfully.')
+            return redirect('profile')
+
+    return render(request, 'password.html', {'errors': errors})

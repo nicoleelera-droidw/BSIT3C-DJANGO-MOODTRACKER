@@ -89,6 +89,15 @@
           </a>
         </li>
 
+        <li class="nav-item mb-1">
+          <a class="nav-link {% if request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'change_password' %}active{% endif %}" href="{% url 'profile' %}">
+            <span class="nav-link-icon d-md-none d-lg-inline-block">
+              <i class="fa fa-user-circle"></i>
+            </span>
+            <span class="nav-link-title">My Profile</span>
+          </a>
+        </li>
+
         {% if user.is_authenticated %}
         <li class="nav-item d-lg-none">
           <a class="nav-link" href="{% url 'logout' %}">
@@ -102,7 +111,7 @@
 
         <li class="nav-item mt-auto dh-nav-sidebar-footer">
           <div class="dh-user-card">
-            <a href="{% if user.is_superuser %}{% url 'users:user_list' %}{% else %}{% url 'dashboard' %}{% endif %}" class="d-flex align-items-center gap-2 text-decoration-none text-white min-w-0 w-100">
+            <a href="{% url 'profile' %}" class="d-flex align-items-center gap-2 text-decoration-none text-white min-w-0 w-100" title="View my profile">
               <span class="dh-avatar">{{ user.username|first|upper }}</span>
               <span class="min-w-0 flex-grow-1">
                 <span class="dh-user-name">{{ user.username }}</span>

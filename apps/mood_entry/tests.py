@@ -90,6 +90,16 @@ class MoodEntryCrudTests(TestCase):
         self.assertContains(response, 'Rating must be between 1 and 10.')
         self.assertFalse(MoodEntry.objects.filter(user=self.user).exists())
 
+    def test_create_form_prefills_category_from_query_string(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse('mood_entry:mood_entry_create'), {'category': self.sad.pk}
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context['form_data']['category'], str(self.sad.pk))
+
 
 class MoodEntryFilterTests(TestCase):
     def setUp(self):

@@ -1,0 +1,126 @@
+{% extends "theme/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-xl">
+  {% include 'theme/messages.html' %}
+
+  <div class="dh-hero mb-3">
+    <div class="dh-hero-inner d-flex flex-wrap align-items-center gap-3">
+      <span class="dh-profile-avatar">{{ user.first_name|default:user.username|first|upper }}</span>
+      <div class="flex-grow-1 min-w-0">
+        <div class="dh-hero-pretitle">My Profile</div>
+        <div class="dh-hero-title">{{ user.get_full_name|default:user.username }}</div>
+        <div class="dh-hero-sub">
+          @{{ user.username }}
+          <span class="dh-dot">·</span>
+          {% if user.is_staff or user.is_superuser %}Administrator{% else %}Member{% endif %}
+          <span class="dh-dot">·</span>
+          Joined {{ user.date_joined|date:"M j, Y" }}
+        </div>
+      </div>
+      <div class="dh-profile-stats">
+        <div>
+          <span>{{ my_entries_count }}</span>
+          <small>Mood entries</small>
+        </div>
+        <div>
+          <span>{{ my_messages_count }}</span>
+          <small>Support messages</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Account details</div>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{% url 'profile' %}">
+            {% csrf_token %}
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label required">First name</label>
+                <input
+                  type="text"
+                  name="first_name"
+                  class="form-control {% if errors.first_name %}is-invalid{% endif %}"
+                  value="{{ form_data.first_name }}">
+                {% if errors.first_name %}
+                <div class="invalid-feedback">{{ errors.first_name }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label required">Last name</label>
+                <input
+                  type="text"
+                  name="last_name"
+                  class="form-control {% if errors.last_name %}is-invalid{% endif %}"
+                  value="{{ form_data.last_name }}">
+                {% if errors.last_name %}
+                <div class="invalid-feedback">{{ errors.last_name }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-control" value="{{ user.username }}" disabled>
+                <div class="form-hint">Your username is used to sign in and cannot be changed.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label required">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  class="form-control {% if errors.email %}is-invalid{% endif %}"
+                  value="{{ form_data.email }}">
+                {% if errors.email %}
+                <div class="invalid-feedback">{{ errors.email }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="mt-4 d-flex flex-wrap gap-2">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-check me-1"></i> Save changes
+              </button>
+              <a href="{% url 'dashboard' %}" class="btn btn-link">Back to dashboard</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Password</div>
+        </div>
+        <div class="card-body">
+          <p class="text-secondary">Keep your account secure with a strong, private password.</p>
+          <a href="{% url 'change_password' %}" class="btn btn-outline-primary w-100">
+            <i class="fas fa-key me-1"></i> Change password
+          </a>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <span class="dh-avatar">{{ user.first_name|default:user.username|first|upper }}</span>
+            <div class="min-w-0">
+              <div class="fw-bold text-truncate">{{ user.get_full_name|default:user.username }}</div>
+              <div class="text-secondary small text-truncate">{{ user.email|default:"No email on file" }}</div>
+            </div>
+          </div>
+          <div class="text-secondary small mt-3">
+            Your mood history is private to your account.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

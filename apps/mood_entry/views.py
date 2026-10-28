@@ -16,8 +16,14 @@ MAX_RATING = 10
 
 
 def _build_form_data(request, mood_entry=None):
+    if mood_entry is not None and mood_entry.category_id:
+        default_category = str(mood_entry.category_id)
+    else:
+        requested_category = request.GET.get('category', '')
+        default_category = requested_category if requested_category.isdigit() else ''
+
     return {
-        'category': request.POST.get('category', str(mood_entry.category_id) if mood_entry and mood_entry.category_id else ''),
+        'category': request.POST.get('category', default_category),
         'rating': request.POST.get('rating', '' if mood_entry is None or mood_entry.rating is None else str(mood_entry.rating)),
         'notes': request.POST.get('notes', '' if mood_entry is None else mood_entry.notes),
     }

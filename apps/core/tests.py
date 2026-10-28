@@ -132,3 +132,106 @@ class DashboardStatsTests(TestCase):
         self.assertEqual(len(response.context['trend_values']), 14)
         self.assertEqual(response.context['trend_values'][-1], 2)
         self.assertEqual(sum(response.context['trend_values']), 2)
+
+    def test_dashboard_offers_quick_mood_shortcuts(self):
+        response = self.client.get(reverse('dashboard'))
+
+        quick_moods = response.context['quick_moods']
+        self.assertTrue(quick_moods)
+        self.assertIn('emoji', quick_moods[0])
+        self.assertContains(response, 'How are you feeling?')
+
+
+class ProfileTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username='profile',
+            password='secret1234',
+            first_name='Pat',
+            last_name='User',
+            email='pat@example.com',
+        )
+        self.client.force_login(self.user)
+
+    def test_profile_page_renders_current_details(self):
+        response = self.client.get(reverse('profile'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'pat@example.com')
+
+    def test_profile_update_saves_names_and_email(self):
+        response = self.client.post(
+            reverse('profile'),
+            {
+                'first_name': 'Patricia',
+                'last_name': 'Usuario',
+                'email': 'patricia@example.com',
+            },
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse('profile'))
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.first_name, 'Patricia')
+        self.assertEqual(self.user.last_name, 'Usuario')
+        self.assertEqual(self.user.email, 'patricia@example.com')
+        self.assertContains(response, 'Profile updated successfully.')
+
+    def test_profile_rejects_email_used_by_another_account(self):
+        get_user_model().objects.create_user(
+            username='other', password='secret1234', email='taken@example.com'
+        )
+
+        response = self.client.post(
+            reverse('profile'),
+            {
+                'first_name': 'Pat',
+                'last_name': 'User',
+                'email': 'taken@example.com',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Email is already in use.')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'pat@example.com')
+
+    def test_change_password_keeps_user_signed_in(self):
+        response = self.client.post(
+            reverse('change_password'),
+            {
+                'current_password': 'secret1234',
+                'new_password': 'N3wPass!234',
+                'confirm_password': 'N3wPass!234',
+            },
+            follow=True,
+        )
+
+        self.assertRedirects(response, reverse('profile'))
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('N3wPass!234'))
+        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 200)
+        self.assertContains(response, 'Password updated successfully.')
+
+    def test_change_password_rejects_wrong_current_password(self):
+        response = self.client.post(
+            reverse('change_password'),
+            {
+                'current_password': 'wrong-password',
+                'new_password': 'N3wPass!234',
+                'confirm_password': 'N3wPass!234',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'current password is incorrect')
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('secret1234'))
+
+    def test_profile_requires_login(self):
+        self.client.logout()
+
+        response = self.client.get(reverse('profile'))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse('login'), response['Location'])
