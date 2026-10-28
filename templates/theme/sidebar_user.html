@@ -43,7 +43,7 @@
         </li>
 
         <li class="nav-item mb-1">
-          <a class="nav-link {% if request.resolver_match.app_name == 'mood_entry' %}active{% endif %}" href="{% url 'mood_entry:mood_entry_list' %}">
+          <a class="nav-link {% if request.resolver_match.app_name == 'mood_entry' and request.resolver_match.url_name != 'mood_entry_create' %}active{% endif %}" href="{% url 'mood_entry:mood_entry_list' %}">
             <span class="nav-link-icon d-md-none d-lg-inline-block">
               <i class="fa fa-heart"></i>
             </span>
@@ -61,7 +61,7 @@
         </li>
 
         <li class="nav-item mb-1">
-          <a class="nav-link" href="{% url 'mood_entry:mood_entry_create' %}">
+          <a class="nav-link {% if request.resolver_match.url_name == 'mood_entry_create' %}active{% endif %}" href="{% url 'mood_entry:mood_entry_create' %}">
             <span class="nav-link-icon d-md-none d-lg-inline-block">
               <i class="fa fa-plus"></i>
             </span>

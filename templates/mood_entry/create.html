@@ -1,76 +1,236 @@
 {% extends "theme/base.html" %}
 {% block content %}
-<div class="container-xl">
-  <div class="page-header d-print-none" aria-label="Page header">
-    <div class="container-xl">
-      <div class="row align-items-center">
-        <div class="col">
-          <div class="page-pretitle">Overview</div>
-          <h2 class="page-title mb-0">{{ page_title|default:"New Mood Entry" }}</h2>
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+    <div>
+      <div class="page-pretitle">Daily check-in</div>
+      <h2 class="dh-page-title mb-1">{% if mood_entry %}Update your check-in{% else %}How are you feeling today?{% endif %}</h2>
+      <p class="text-muted mb-0">Take a pause, reflect, and log your emotional pulse. Every feeling is welcome.</p>
+    </div>
+    <span class="dh-status-pill">
+      <i class="fas fa-pencil me-1"></i>{% if mood_entry %}Editing check-in{% else %}Unsaved check-in{% endif %}
+    </span>
+  </div>
+
+  {% include 'theme/messages.html' %}
+
+  <form method="POST" id="checkinForm" novalidate>
+    {% csrf_token %}
+    <div class="row g-3">
+      <div class="col-12 col-xl-8">
+        <div class="card dh-checkin-card">
+          <div class="card-body">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+              <h3 class="dh-section-title mb-0">Choose your mood</h3>
+              <span class="text-muted small">Select one that feels closest</span>
+            </div>
+
+            <div class="dh-emotion-grid">
+              {% for emotion in emotions %}
+              <label class="dh-emotion-option" data-emoji="{{ emotion.emoji|default:'🙂' }}" data-name="{{ emotion.name }}">
+                <input type="radio" name="emotion" value="{{ emotion.pk }}" {% if form_data.emotion == emotion.pk|stringformat:"s" %}checked{% endif %}>
+                <span class="dh-emotion-emoji">{{ emotion.emoji|default:"🙂" }}</span>
+                <span class="dh-emotion-name">{{ emotion.name }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            {% if errors.emotion %}
+            <div class="text-danger small mt-2">{{ errors.emotion }}</div>
+            {% endif %}
+
+            <div class="mt-3">
+              <label class="form-label required" for="id_category">Mood category</label>
+              <select name="category" id="id_category" class="form-select" required>
+                <option value="">-- Choose a mood --</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}" {% if form_data.category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-hint">Used to choose the support message you receive.</div>
+              {% if errors.category %}
+              <div class="text-danger small mt-1">{{ errors.category }}</div>
+              {% endif %}
+            </div>
+
+            <div class="dh-divider"></div>
+
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+              <div>
+                <h3 class="dh-section-title mb-1">Mood intensity level</h3>
+                <p class="text-muted small mb-0">How strongly are you feeling this emotion?</p>
+              </div>
+              <span class="dh-intensity-value">
+                <span id="intensityValue">{{ form_data.rating|default:"5" }}</span> / 10
+                <span class="dh-intensity-label" id="intensityLabel">Moderate</span>
+              </span>
+            </div>
+            <input type="range" min="1" max="10" step="1" name="rating" id="id_rating" value="{{ form_data.rating|default:'5' }}" class="form-range dh-intensity-range mt-2">
+            <div class="d-flex justify-content-between text-muted small">
+              <span>1 · Very light</span>
+              <span>5 · Moderate</span>
+              <span>10 · Extremely intense</span>
+            </div>
+            {% if errors.rating %}
+            <div class="text-danger small mt-1">{{ errors.rating }}</div>
+            {% endif %}
+
+            <div class="dh-divider"></div>
+
+            <h3 class="dh-section-title mb-1">What's influencing your mood?</h3>
+            <p class="text-muted small mb-2">Optional — select any that apply</p>
+            <div class="d-flex flex-wrap gap-2">
+              {% for factor in factor_options %}
+              <label class="dh-factor-chip">
+                <input type="checkbox" name="factors" value="{{ factor }}" {% if factor in form_data.factors %}checked{% endif %}>
+                <span>{{ factor }}</span>
+              </label>
+              {% endfor %}
+            </div>
+
+            <div class="dh-divider"></div>
+
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+              <h3 class="dh-section-title mb-0">Daily journal &amp; reflection</h3>
+              <span class="text-muted small"><span id="notesCount">{{ form_data.notes|length }}</span> / {{ max_notes_length }}</span>
+            </div>
+            <textarea name="notes" id="id_notes" class="form-control mt-2" rows="5" maxlength="{{ max_notes_length }}" placeholder="Write down any thoughts, highlights, or feelings about today...">{{ form_data.notes }}</textarea>
+            {% if errors.notes %}
+            <div class="text-danger small mt-1">{{ errors.notes }}</div>
+            {% endif %}
+          </div>
+          <div class="card-footer d-flex align-items-center justify-content-between">
+            <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-ghost-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fas fa-check me-1"></i>{% if mood_entry %}Update Mood Log{% else %}Save Mood Log{% endif %}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-4">
+        <div class="card dh-checkin-preview">
+          <div class="card-body">
+            <div class="dh-preview-eyebrow">Your check-in</div>
+            <div class="dh-preview-date">{% now "F j, Y" %}</div>
+            <div class="d-flex align-items-center gap-3 mt-3">
+              <span class="dh-preview-emoji" id="previewEmoji">💭</span>
+              <div>
+                <div class="dh-preview-emotion" id="previewEmotion">Pick a feeling</div>
+                <div class="dh-preview-intensity">
+                  <span id="previewIntensity">{{ form_data.rating|default:"5" }}</span> / 10 ·
+                  <span id="previewIntensityLabel">Moderate</span>
+                </div>
+              </div>
+            </div>
+            <div class="dh-preview-label mt-3">Influencing factors</div>
+            <div class="d-flex flex-wrap gap-1" id="previewFactors">
+              <span class="text-white-50 small">None selected yet</span>
+            </div>
+            <div class="dh-preview-note mt-3">This check-in will appear in your mood entries after you save it.</div>
+          </div>
+        </div>
+
+        <div class="card dh-prompt-card mt-3">
+          <div class="card-body">
+            <div class="dh-prompt-title"><i class="fas fa-wand-magic-sparkles me-1"></i> Not sure where to start?</div>
+            <p class="dh-prompt-line">What gave you a moment of peace?</p>
+            <p class="dh-prompt-line">What felt challenging today?</p>
+            <p class="dh-prompt-line mb-0">What do you need a little more of?</p>
+          </div>
+        </div>
+
+        <div class="dh-gentle-note mt-3">
+          <i class="fas fa-shield-heart me-1"></i>
+          There is no right or wrong answer. Just check in with yourself, as you are.
         </div>
       </div>
     </div>
-  </div>
-  <br>
+  </form>
+{% endblock %}
 
-  <div class="card" style="max-width: 720px;">
-    <div class="card-body">
-      <form method="POST">
-        {% csrf_token %}
-        {% if messages %}
-        {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
-        {% endfor %}
-        {% endif %}
+{% block extra_js %}
+<script>
+(function () {
+  const form = document.getElementById('checkinForm');
+  const ratingInput = document.getElementById('id_rating');
+  const notesInput = document.getElementById('id_notes');
+  const previewEmoji = document.getElementById('previewEmoji');
+  const previewEmotion = document.getElementById('previewEmotion');
+  const previewIntensity = document.getElementById('previewIntensity');
+  const previewIntensityLabel = document.getElementById('previewIntensityLabel');
+  const previewFactors = document.getElementById('previewFactors');
+  const intensityValue = document.getElementById('intensityValue');
+  const intensityLabel = document.getElementById('intensityLabel');
+  const notesCount = document.getElementById('notesCount');
 
-        <div class="mb-3">
-          <label class="form-label required">Mood Category</label>
-          <select name="category" id="id_category" class="form-select" required>
-            <option value="">-- Choose a mood --</option>
-            {% for category in categories %}
-            <option value="{{ category.id }}" {% if form_data.category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
-            {% endfor %}
-          </select>
-          {% if errors.category %}
-          <div class="text-danger small mt-1">{{ errors.category }}</div>
-          {% endif %}
-        </div>
+  const INTENSITY_LABELS = {
+    1: 'Very light', 2: 'Very light', 3: 'Light', 4: 'Light', 5: 'Moderate',
+    6: 'Noticeable', 7: 'Strong', 8: 'Strong', 9: 'Intense', 10: 'Extremely intense'
+  };
 
-        <div class="mb-3">
-          <label class="form-label">Emotion</label>
-          <select name="emotion" id="id_emotion" class="form-select">
-            <option value="">-- No specific emotion --</option>
-            {% for emotion in emotions %}
-            <option value="{{ emotion.id }}" {% if form_data.emotion == emotion.id|stringformat:"s" %}selected{% endif %}>{{ emotion.emoji }} {{ emotion.name }} ({{ emotion.get_tone_display }})</option>
-            {% endfor %}
-          </select>
-          <div class="form-hint">Optional. Pick the feeling that fits best.</div>
-          {% if errors.emotion %}
-          <div class="text-danger small mt-1">{{ errors.emotion }}</div>
-          {% endif %}
-        </div>
+  function intensityLabelFor(value) {
+    return INTENSITY_LABELS[value] || 'Moderate';
+  }
 
-        <div class="mb-3">
-          <label class="form-label">Rating</label>
-          <input type="number" name="rating" id="id_rating" class="form-control" min="1" max="10" placeholder="1 - 10" value="{{ form_data.rating }}">
-          <div class="form-hint">Optional. A whole number between 1 and 10.</div>
-          {% if errors.rating %}
-          <div class="text-danger small mt-1">{{ errors.rating }}</div>
-          {% endif %}
-        </div>
+  function updateIntensity() {
+    const value = ratingInput.value || '5';
+    const label = intensityLabelFor(value);
+    intensityValue.textContent = value;
+    intensityLabel.textContent = label;
+    previewIntensity.textContent = value;
+    previewIntensityLabel.textContent = label;
+  }
 
-        <div class="mb-3">
-          <label class="form-label">Notes</label>
-          <textarea name="notes" id="id_notes" class="form-control" rows="4" placeholder="How did you feel?">{{ form_data.notes }}</textarea>
-          <div class="form-hint">A supportive message will be generated automatically based on the mood you save.</div>
-        </div>
+  function updateEmotion() {
+    const checked = form.querySelector('input[name="emotion"]:checked');
+    if (!checked) {
+      previewEmoji.textContent = '💭';
+      previewEmotion.textContent = 'Pick a feeling';
+      return;
+    }
+    const option = checked.closest('.dh-emotion-option');
+    previewEmoji.textContent = option.dataset.emoji || '🙂';
+    previewEmotion.textContent = option.dataset.name || 'Selected';
+  }
 
-        <div class="form-footer">
-          <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-ghost-secondary">Cancel</a>
-          <button type="submit" class="btn btn-primary">{{ submit_label|default:"Save Mood Entry" }}</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
+  function updateFactors() {
+    const selected = Array.from(form.querySelectorAll('input[name="factors"]:checked')).map(function (input) {
+      return input.value;
+    });
+    previewFactors.innerHTML = '';
+    if (!selected.length) {
+      const empty = document.createElement('span');
+      empty.className = 'text-white-50 small';
+      empty.textContent = 'None selected yet';
+      previewFactors.appendChild(empty);
+      return;
+    }
+    selected.forEach(function (factor) {
+      const chip = document.createElement('span');
+      chip.className = 'dh-preview-chip';
+      chip.textContent = factor;
+      previewFactors.appendChild(chip);
+    });
+  }
+
+  function updateNotesCount() {
+    notesCount.textContent = notesInput.value.length;
+  }
+
+  form.addEventListener('change', function (event) {
+    if (event.target.name === 'emotion') {
+      updateEmotion();
+    }
+    if (event.target.name === 'factors') {
+      updateFactors();
+    }
+  });
+  ratingInput.addEventListener('input', updateIntensity);
+  notesInput.addEventListener('input', updateNotesCount);
+
+  updateIntensity();
+  updateEmotion();
+  updateFactors();
+  updateNotesCount();
+})();
+</script>
 {% endblock %}

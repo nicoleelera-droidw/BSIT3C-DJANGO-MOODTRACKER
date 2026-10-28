@@ -1,168 +1,209 @@
 {% extends "theme/base.html" %}
 {% block content %}
-<div class="container-xl">
-  <div class="page-header d-print-none" aria-label="Page header">
-    <div class="container-xl">
-      <div class="row align-items-center">
-        <div class="col">
-          <div class="page-pretitle">Overview</div>
-          <div class="d-flex align-items-center gap-3 flex-wrap d-none d-md-flex">
-            <h2 class="page-title mb-0">Mood Entries</h2>
-          </div>
-          <h2 class="page-title mb-0 d-md-none">Mood Entries</h2>
+  {% include 'theme/messages.html' %}
+
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+    <div>
+      <div class="page-pretitle">Your journal</div>
+      <h2 class="dh-page-title mb-1">My mood entries</h2>
+      <p class="text-muted mb-0">Every check-in is a small act of noticing how you feel.</p>
+    </div>
+    <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-primary">
+      <i class="fas fa-plus me-1"></i> New check-in
+    </a>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon"><i class="fas fa-heart"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">Total entries</div>
+          <div class="dh-mini-value">{{ stats.total }}</div>
+          <div class="dh-mini-sub">all time</div>
         </div>
-        <div class="col-auto">
-          <div class="btn-list">
-            <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-primary">
-              <i class="ti ti-plus me-1"></i> New Mood Entry
-            </a>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon is-green"><i class="fas fa-calendar-day"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">This month</div>
+          <div class="dh-mini-value">{{ stats.monthly }}</div>
+          <div class="dh-mini-sub">check-ins logged</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon is-blue"><i class="fas fa-face-smile"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">Top emotion</div>
+          <div class="dh-mini-value is-text">
+            {% if stats.top_label %}{{ stats.top_emoji }} {{ stats.top_label }}{% else %}—{% endif %}
           </div>
+          <div class="dh-mini-sub">
+            {% if stats.top_label %}{{ stats.top_count }} entr{{ stats.top_count|pluralize:"y,ies" }}{% else %}No emotion tags yet{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon is-orange"><i class="fas fa-gauge-high"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">Average intensity</div>
+          <div class="dh-mini-value">{% if stats.average %}{{ stats.average }}<span class="fs-4 text-muted">/10</span>{% else %}—{% endif %}</div>
+          <div class="dh-mini-sub">across rated entries</div>
         </div>
       </div>
     </div>
   </div>
-  <br>
 
-  <form method="GET" class="row g-2 align-items-end mb-3">
-    <div class="col-12 {% if is_admin_view %}col-md-4{% else %}col-md-6{% endif %}">
-      <label class="form-label">Search</label>
-      <div class="input-group">
-        <span class="input-group-text"><i class="ti ti-search"></i></span>
-        <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Mood or notes...">
-        {% if has_filters %}
-        <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-outline-secondary">Clear</a>
-        {% endif %}
-        <button type="submit" class="btn btn-primary">Filter</button>
-      </div>
+  <div class="card dh-filter-card mb-3">
+    <div class="card-body">
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-12 col-xl-4">
+          <label class="form-label">Search</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Mood, emotion, or notes...">
+            <button type="submit" class="btn btn-primary">Filter</button>
+          </div>
+        </div>
+        <div class="col-6 col-xl-2">
+          <label class="form-label">Mood</label>
+          <select name="category" class="form-select">
+            <option value="">All moods</option>
+            {% for category in categories %}
+            <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-xl-2">
+          <label class="form-label">From</label>
+          <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
+        </div>
+        <div class="col-6 col-xl-2">
+          <label class="form-label">To</label>
+          <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
+        </div>
+        <div class="col-6 col-xl-2 d-flex gap-2">
+          {% if has_filters %}
+          <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-outline-secondary w-100">Clear</a>
+          {% endif %}
+        </div>
+      </form>
     </div>
-    <div class="col-6 col-md-2">
-      <label class="form-label">Mood</label>
-      <select name="category" class="form-select">
-        <option value="">All moods</option>
-        {% for category in categories %}
-        <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    {% if is_admin_view %}
-    <div class="col-6 col-md-2">
-      <label class="form-label">User</label>
-      <select name="user" class="form-select">
-        <option value="">All users</option>
-        {% for u in users %}
-        <option value="{{ u.pk }}" {% if selected_user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    {% endif %}
-    <div class="col-6 col-md-2">
-      <label class="form-label">From</label>
-      <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
-    </div>
-    <div class="col-6 col-md-2">
-      <label class="form-label">To</label>
-      <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
-    </div>
-  </form>
+  </div>
 
   <div class="card">
     <div class="card-header">
-      <div class="card-title">
-        All Mood Entries
-        {% if query %}
-        <span class="text-muted fw-normal">— search results for "{{ query }}"</span>
-        {% endif %}
+      <div class="card-title">History</div>
+      <div class="card-options text-muted small">
+        {{ mood_entries.paginator.count }} entr{{ mood_entries.paginator.count|pluralize:"y,ies" }}
+        {% if query %} · search results for "{{ query }}"{% endif %}
       </div>
     </div>
     <div class="table-responsive">
-      <table class="table table-vcenter table-hover card-table text-nowrap" id="moodEntryTable">
+      <table class="table table-vcenter table-hover card-table">
         <thead>
           <tr>
-            <th>#</th>
-            <th>Mood</th>
-            {% if is_admin_view %}<th>Owner</th>{% endif %}
-            <th>Rating</th>
-            <th>Notes</th>
-            {% if not is_admin_view %}<th>Support Message</th>{% endif %}
-            <th>Created</th>
+            <th>Feeling</th>
+            <th>Intensity</th>
+            <th class="d-none d-lg-table-cell">Journal</th>
+            <th class="d-none d-xl-table-cell">Support message</th>
+            <th class="d-none d-md-table-cell">Logged</th>
             <th class="w-1">Actions</th>
           </tr>
         </thead>
-        <tbody id="moodEntryTableBody">
+        <tbody>
         {% for entry in mood_entries %}
-        <tr data-row-id="{{ entry.id }}">
-          <td class="text-muted">{{ forloop.counter0|add:mood_entries.start_index }}</td>
-          <td class="fw-semibold">
-            {{ entry.category.name }}
-            {% if entry.emotion %}
-            <div class="text-muted small fw-normal">{{ entry.emotion.emoji }} {{ entry.emotion.name }}</div>
-            {% endif %}
-          </td>
-          {% if is_admin_view %}
-          <td class="text-muted">{{ entry.user.get_full_name|default:entry.user.username|default:"—" }}</td>
-          {% endif %}
-          <td><span class="badge bg-primary-lt text-primary">{{ entry.rating|default:"—" }}</span></td>
-          <td class="text-muted">{{ entry.notes|default:"—" }}</td>
-          {% if not is_admin_view %}
-          <td class="text-muted">
-            {% with support_message=entry.messages.all|first %}
-              {% if support_message %}
-                {{ support_message.body|truncatechars:90 }}
+          <tr>
+            <td>
+              <div class="dh-mood-cell">
+                <span class="dh-mood-avatar">{{ entry.mood_emoji }}</span>
+                <div class="min-w-0">
+                  <div class="dh-mood-name">
+                    {% if entry.emotion %}{{ entry.emotion.name }}{% else %}{{ entry.category.name }}{% endif %}
+                  </div>
+                  {% if entry.emotion or entry.factors %}
+                  <div class="dh-mood-meta">
+                    {% if entry.emotion %}{{ entry.category.name }}{% endif %}{% if entry.emotion and entry.factors %} · {% endif %}{% if entry.factors %}{{ entry.factors|truncatechars:28 }}{% endif %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if entry.rating %}
+              <span class="dh-intensity-badge"><span class="dot"></span>{{ entry.rating }}<span class="fw-normal">/10</span></span>
               {% else %}
-                —
+              <span class="text-muted">—</span>
               {% endif %}
-            {% endwith %}
-          </td>
-          {% endif %}
-          <td class="text-muted">{{ entry.created_at|date:"M j, Y" }}</td>
-          <td>
-            <div class="d-flex gap-1 align-items-center">
-              <a href="{% url 'mood_entry:mood_entry_detail' entry.id %}" class="btn btn-ghost-secondary btn-icon btn-sm" title="View">
-                <i class="fas fa-eye text-primary"></i>
-              </a>
-              <a href="{% url 'mood_entry:mood_entry_update' entry.id %}" class="btn btn-ghost-secondary btn-icon btn-sm" title="Edit">
-                <i class="fas fa-edit text-primary"></i>
-              </a>
-              <form method="POST" action="{% url 'mood_entry:mood_entry_delete' entry.id %}" onsubmit="return confirm('Delete this mood entry?');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-ghost-secondary btn-icon btn-sm" title="Delete">
-                  <i class="fas fa-trash-alt text-danger"></i>
-                </button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% empty %}
-        <tr>
-          <td colspan="7">
-            <div class="empty py-5">
-              <div class="empty-icon">
-                <i class="fas fa-heart fa-2x text-muted"></i>
-              </div>
-              <p class="empty-title">No mood entries found</p>
-              <p class="empty-subtitle">{% if has_filters %}Try adjusting your filters or search.{% else %}Try adjusting your search or add a new mood entry to receive support messages automatically.{% endif %}</p>
-              <div class="empty-action">
-                <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-primary">
-                  <i class="ti ti-plus me-1"></i> New Mood Entry
+            </td>
+            <td class="dh-cell-note d-none d-lg-table-cell">{{ entry.notes|default:"No notes"|truncatechars:70 }}</td>
+            <td class="dh-cell-note d-none d-xl-table-cell">
+              {% with support_message=entry.messages.all|first %}
+                {% if support_message %}{{ support_message.body|truncatechars:70 }}{% else %}—{% endif %}
+              {% endwith %}
+            </td>
+            <td class="d-none d-md-table-cell">
+              <div class="dh-cell-date">{{ entry.created_at|date:"M j, Y" }}</div>
+              <div class="dh-mood-meta">{{ entry.created_at|date:"g:i A" }}</div>
+            </td>
+            <td>
+              <div class="d-flex gap-1 align-items-center">
+                <a href="{% url 'mood_entry:mood_entry_detail' entry.id %}" class="btn btn-ghost-secondary btn-icon btn-sm" title="View">
+                  <i class="fas fa-eye"></i>
                 </a>
+                <a href="{% url 'mood_entry:mood_entry_update' entry.id %}" class="btn btn-ghost-secondary btn-icon btn-sm" title="Edit">
+                  <i class="fas fa-pen"></i>
+                </a>
+                <form method="POST" action="{% url 'mood_entry:mood_entry_delete' entry.id %}" onsubmit="return confirm('Delete this mood entry?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-ghost-secondary btn-icon btn-sm" title="Delete">
+                    <i class="fas fa-trash-alt text-danger"></i>
+                  </button>
+                </form>
               </div>
-            </div>
-          </td>
-        </tr>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6">
+              <div class="dh-empty">
+                <div class="dh-empty-emoji">🌱</div>
+                <div class="dh-empty-title">No mood entries yet</div>
+                <p class="dh-empty-text">
+                  {% if has_filters %}Try adjusting your filters or search to find what you're looking for.{% else %}Your first check-in is the hardest. Start with one honest feeling — that's enough.{% endif %}
+                </p>
+                <div class="d-flex justify-content-center gap-2">
+                  {% if has_filters %}
+                  <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-outline-secondary">Clear filters</a>
+                  {% endif %}
+                  <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> New check-in
+                  </a>
+                </div>
+              </div>
+            </td>
+          </tr>
         {% endfor %}
         </tbody>
       </table>
     </div>
 
     {% if mood_entries.paginator.num_pages > 1 %}
-    <div class="card-footer d-flex align-items-center">
-      <p class="m-0 text-muted">
-        Showing <span class="fw-medium">{{ mood_entries.start_index }}</span> to <span class="fw-medium">{{ mood_entries.end_index }}</span> of <span class="fw-medium">{{ mood_entries.paginator.count }}</span> entries
+    <div class="card-footer d-flex flex-wrap align-items-center gap-2">
+      <p class="m-0 text-muted small">
+        Showing <span class="fw-semibold">{{ mood_entries.start_index }}–{{ mood_entries.end_index }}</span>
+        of <span class="fw-semibold">{{ mood_entries.paginator.count }}</span> entries
       </p>
-      <ul class="pagination m-0 ms-auto">
+      <ul class="pagination pagination-sm m-0 ms-auto">
         {% if mood_entries.has_previous %}
         <li class="page-item">
-          <a class="page-link" href="?{{ pagination_query }}page={{ mood_entries.previous_page_number }}">prev</a>
+          <a class="page-link" href="?{{ pagination_query }}page={{ mood_entries.previous_page_number }}"><i class="fas fa-chevron-left"></i></a>
         </li>
         {% endif %}
         {% for num in mood_entries.paginator.page_range %}
@@ -172,12 +213,41 @@
         {% endfor %}
         {% if mood_entries.has_next %}
         <li class="page-item">
-          <a class="page-link" href="?{{ pagination_query }}page={{ mood_entries.next_page_number }}">next</a>
+          <a class="page-link" href="?{{ pagination_query }}page={{ mood_entries.next_page_number }}"><i class="fas fa-chevron-right"></i></a>
         </li>
         {% endif %}
       </ul>
     </div>
     {% endif %}
   </div>
-</div>
+
+  <div class="row g-3 mt-0">
+    <div class="col-12 col-lg-7">
+      <div class="card dh-memory-card h-100">
+        <div class="card-body">
+          <div class="dh-preview-eyebrow">A moment worth remembering</div>
+          {% if memory_entry %}
+          <p class="dh-memory-quote">“{{ memory_entry.notes|truncatechars:220 }}”</p>
+          <div class="dh-memory-meta">
+            {{ memory_entry.mood_emoji }}
+            {% if memory_entry.emotion %}{{ memory_entry.emotion.name }}{% else %}{{ memory_entry.category.name }}{% endif %}
+            <span class="dh-dot">·</span>{{ memory_entry.created_at|date:"F j, Y" }}
+          </div>
+          {% else %}
+          <p class="dh-memory-quote">Your reflections will collect here. Add a journal note to your next check-in and revisit it whenever you need a little perspective.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card dh-prompt-card h-100">
+        <div class="card-body">
+          <div class="dh-prompt-title"><i class="fas fa-lightbulb me-1"></i> Small check-in tips</div>
+          <p class="dh-prompt-line">Name the feeling before explaining it.</p>
+          <p class="dh-prompt-line">Intensity matters as much as the mood itself.</p>
+          <p class="dh-prompt-line mb-0">Short notes are still meaningful notes.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 {% endblock %}

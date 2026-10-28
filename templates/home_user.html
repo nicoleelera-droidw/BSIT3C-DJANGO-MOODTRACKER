@@ -2,20 +2,19 @@
 {% load static %}
 
 {% block content %}
-<div class="container-xl">
   {% include 'theme/messages.html' %}
   <div class="dh-hero mb-3">
     <div class="dh-hero-inner">
       <div class="d-flex flex-wrap align-items-start justify-content-between gap-3">
         <div>
           <div class="dh-hero-pretitle">Your mood journey</div>
-          <div class="dh-hero-title">{{ greeting }}, {{ request.user.first_name|default:request.user.username }} <span class="dh-hero-emoji">💜</span></div>
+          <div class="dh-hero-title">{{ greeting }}, {{ request.user.first_name|default:request.user.username }} <span class="dh-hero-emoji">☀️</span></div>
           <p class="dh-hero-sub mb-0">
             {% if current_streak %}You're on a {{ current_streak }}-day check-in streak. Keep it going!{% else %}A quick check-in today helps you understand your patterns tomorrow.{% endif %}
           </p>
         </div>
         <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-accent">
-          <i class="fas fa-plus me-1"></i> New Mood Entry
+          <i class="fas fa-plus me-1"></i> New check-in
         </a>
       </div>
       {% if quick_moods %}
@@ -33,60 +32,44 @@
 
   <div class="row g-3 mb-3">
     <div class="col-6 col-xl-3">
-      <div class="card dh-stat-card stat-card-primary">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start gap-2">
-            <div>
-              <div class="stat-label">My Mood Entries</div>
-              <div class="stat-value mt-2">{{ my_entries_count }}</div>
-              <div class="stat-note">moments captured</div>
-            </div>
-            <span class="stat-card-icon"><i class="fas fa-heart"></i></span>
-          </div>
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon"><i class="fas fa-heart"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">My entries</div>
+          <div class="dh-mini-value">{{ my_entries_count }}</div>
+          <div class="dh-mini-sub">moments captured</div>
         </div>
       </div>
     </div>
     <div class="col-6 col-xl-3">
-      <div class="card dh-stat-card stat-card-info">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start gap-2">
-            <div>
-              <div class="stat-label">Last 7 Days</div>
-              <div class="stat-value mt-2">{{ entries_last_7_days }}</div>
-              <div class="stat-note">entries this week</div>
-            </div>
-            <span class="stat-card-icon"><i class="fas fa-calendar-week"></i></span>
-          </div>
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon is-blue"><i class="fas fa-calendar-week"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">Last 7 days</div>
+          <div class="dh-mini-value">{{ entries_last_7_days }}</div>
+          <div class="dh-mini-sub">entries this week</div>
         </div>
       </div>
     </div>
     <div class="col-6 col-xl-3">
-      <div class="card dh-stat-card stat-card-warning">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start gap-2">
-            <div>
-              <div class="stat-label">Current Streak</div>
-              <div class="stat-value mt-2">{{ current_streak }}</div>
-              <div class="stat-note">day{{ current_streak|pluralize }} in a row</div>
-            </div>
-            <span class="stat-card-icon"><i class="fas fa-fire"></i></span>
-          </div>
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon is-orange"><i class="fas fa-fire"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">Current streak</div>
+          <div class="dh-mini-value">{{ current_streak }}</div>
+          <div class="dh-mini-sub">day{{ current_streak|pluralize }} in a row</div>
         </div>
       </div>
     </div>
     <div class="col-6 col-xl-3">
-      <div class="card dh-stat-card stat-card-success">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start gap-2">
-            <div>
-              <div class="stat-label">Top Mood</div>
-              <div class="stat-value stat-value-text mt-2">{{ top_mood.label|default:"—" }}</div>
-              <div class="stat-note">
-                {% if top_mood %}{{ top_mood.count }} entr{{ top_mood.count|pluralize:"y,ies" }}{% else %}No entries yet{% endif %}
-              </div>
-            </div>
-            <span class="stat-card-icon"><i class="fas fa-face-smile"></i></span>
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon is-green"><i class="fas fa-gauge-high"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">Average intensity</div>
+          <div class="dh-mini-value">
+            {% if average_intensity %}{{ average_intensity }}<span class="fs-4 text-muted">/10</span>{% else %}—{% endif %}
           </div>
+          <div class="dh-mini-sub">across rated entries</div>
         </div>
       </div>
     </div>
@@ -94,16 +77,31 @@
 
   <div class="row g-3 mb-3">
     <div class="col-12 col-lg-7">
-      <div class="card">
-        <div class="card-header">Mood Trend — Last 14 Days</div>
+      <div class="card h-100">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Mood trend</div>
+            <div class="text-muted small">Check-ins over the last 14 days</div>
+          </div>
+          {% if top_mood %}
+          <div class="card-options">
+            <span class="dh-intensity-badge"><span class="dot"></span>Top mood · {{ top_mood.label }}</span>
+          </div>
+          {% endif %}
+        </div>
         <div class="card-body">
           <div id="chart-my-trend"></div>
         </div>
       </div>
     </div>
     <div class="col-12 col-lg-5">
-      <div class="card">
-        <div class="card-header">My Mood Distribution</div>
+      <div class="card h-100">
+        <div class="card-header">
+          <div>
+            <div class="card-title">My mood distribution</div>
+            <div class="text-muted small">How often each mood shows up</div>
+          </div>
+        </div>
         <div class="card-body">
           <div id="chart-my-moods"></div>
         </div>
@@ -111,47 +109,57 @@
     </div>
   </div>
 
-  <div class="row g-3 mb-3">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Recent Entries</div>
-          <div class="card-options">
-            <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-sm btn-ghost-secondary">View all</a>
-          </div>
-        </div>
-        <div class="card-body">
-          {% if recent_entries %}
-          <div class="list-group list-group-flush">
-            {% for entry in recent_entries %}
-            <a href="{% url 'mood_entry:mood_entry_detail' entry.id %}" class="list-group-item list-group-item-action">
-              <div class="row align-items-center">
-                <div class="col text-truncate">
-                  <div class="text-body d-block">{{ entry.category.name }}</div>
-                  <div class="text-secondary text-truncate mt-n1">
-                    {% if entry.notes %}{{ entry.notes|truncatechars:60 }}{% else %}No notes{% endif %}
-                  </div>
-                </div>
-                <div class="col-auto text-secondary">{{ entry.created_at|date:"M j, Y" }}</div>
-                <div class="col-auto">
-                  {% if entry.rating %}<span class="badge bg-blue-lt">{{ entry.rating }}/10</span>{% endif %}
-                </div>
-              </div>
-            </a>
-            {% endfor %}
-          </div>
-          {% else %}
-          <div class="text-muted">No entries yet. Record your first mood to start tracking your journey.</div>
-          {% endif %}
-        </div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Recent entries</div>
+        <div class="text-muted small">Your latest check-ins, newest first</div>
+      </div>
+      <div class="card-options">
+        <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-sm btn-outline-secondary">View all</a>
       </div>
     </div>
+    <div class="card-body p-0">
+      {% if recent_entries %}
+      <div class="list-group list-group-flush">
+        {% for entry in recent_entries %}
+        <a href="{% url 'mood_entry:mood_entry_detail' entry.id %}" class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+          <span class="dh-mood-avatar">{{ entry.mood_emoji }}</span>
+          <div class="flex-grow-1 min-w-0">
+            <div class="dh-mood-name">
+              {% if entry.emotion %}{{ entry.emotion.name }}<span class="dh-mood-meta fw-normal">· {{ entry.category.name }}</span>{% else %}{{ entry.category.name }}{% endif %}
+            </div>
+            <div class="text-muted small text-truncate">
+              {% if entry.notes %}{{ entry.notes|truncatechars:80 }}{% else %}No notes{% endif %}
+            </div>
+          </div>
+          <div class="text-end">
+            <div class="dh-cell-date">{{ entry.created_at|date:"M j" }}</div>
+            {% if entry.rating %}<span class="dh-intensity-badge mt-1"><span class="dot"></span>{{ entry.rating }}/10</span>{% endif %}
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="dh-empty">
+        <div class="dh-empty-emoji">🌱</div>
+        <div class="dh-empty-title">No entries yet</div>
+        <p class="dh-empty-text">Record your first mood to start tracking your journey.</p>
+        <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-primary">
+          <i class="fas fa-plus me-1"></i> New check-in
+        </a>
+      </div>
+      {% endif %}
+    </div>
   </div>
-</div>
+
+  <p class="text-muted small text-center mt-3 mb-0">
+    <i class="fas fa-shield-heart me-1"></i>
+    Your check-ins are private to you. Take them one feeling at a time.
+  </p>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'libs/apexcharts/dist/apexcharts.min.js' %}"></script>
 <script>
   (function () {
     var attempts = 0;
@@ -185,14 +193,16 @@
       }
 
       new ApexCharts(el, {
-        chart: { type: "area", height: 300, toolbar: { show: false } },
+        chart: { type: "area", height: 300, toolbar: { show: false }, fontFamily: "inherit" },
         series: [{ name: "Entries", data: series }],
         xaxis: { categories: labels, labels: { rotate: -45 } },
         yaxis: { min: 0, forceNiceScale: true, labels: { formatter: function (val) { return Math.round(val); } } },
-        stroke: { curve: "smooth", width: 2 },
+        stroke: { curve: "smooth", width: 2.5 },
+        fill: { type: "gradient", gradient: { shadeIntensity: 0.4, opacityFrom: 0.35, opacityTo: 0.02, stops: [0, 95] } },
         dataLabels: { enabled: false },
-        colors: ["#206bc4"],
+        colors: ["#d99b2f"],
         tooltip: { y: { formatter: function (val) { return val + (val === 1 ? " entry" : " entries"); } } },
+        grid: { borderColor: "#efe6d6", strokeDashArray: 4 },
       }).render();
     }
 
@@ -203,17 +213,24 @@
       var series = [{% for stat in mood_stats %}{{ stat.value|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
       var labels = [{% for stat in mood_stats %}"{{ stat.label|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
 
+      var pairs = labels.map(function (label, i) { return [label, series[i]]; })
+        .filter(function (pair) { return pair[1] > 0; });
+      labels = pairs.map(function (pair) { return pair[0]; });
+      series = pairs.map(function (pair) { return pair[1]; });
+
       if (!series.length || series.every(function (v) { return v === 0; })) {
         el.innerHTML = '<div class="text-muted">No mood data available.</div>';
         return;
       }
 
       new ApexCharts(el, {
-        chart: { type: "pie", height: 300 },
+        chart: { type: "pie", height: 300, fontFamily: "inherit" },
         labels: labels,
         series: series,
+        colors: ["#e7ae3f", "#e07a5f", "#8ab17d", "#5b8db8", "#b07cc6", "#3f9b95", "#d96c8a", "#a3a32f"],
         legend: { position: "bottom" },
         dataLabels: { enabled: true, formatter: function (val) { return val.toFixed(1) + "%"; } },
+        stroke: { colors: ["#ffffff"] },
         tooltip: { y: { formatter: function (val, opts) { var label = opts.w.globals.labels[opts.seriesIndex]; return label + ": " + val; } } },
       }).render();
     }

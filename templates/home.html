@@ -2,7 +2,6 @@
 {% load static %}
 
 {% block content %}
-<div class="container-xl">
   {% include 'theme/messages.html' %}
   <div class="dh-hero mb-3">
     <div class="dh-hero-inner d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -99,19 +98,14 @@
           {% if recent_entries %}
           <div class="list-group list-group-flush">
             {% for entry in recent_entries %}
-            <div class="list-group-item">
-              <div class="row align-items-center">
-                <div class="col text-truncate">
-                  <div class="text-body d-block">{{ entry.category.name }}</div>
-                  <div class="text-secondary text-truncate mt-n1">
-                    {{ entry.user.username|default:"Unknown user" }} — {{ entry.created_at|date:"M j, Y g:i A" }}
-                  </div>
-                </div>
-                <div class="col-auto">
-                  {% if entry.rating %}<span class="badge bg-blue-lt">{{ entry.rating }}/10</span>{% endif %}
-                </div>
+            <a href="{% url 'mood_entry:mood_entry_detail' entry.id %}" class="list-group-item list-group-item-action d-flex align-items-center gap-3">
+              <span class="dh-mood-avatar">{{ entry.mood_emoji }}</span>
+              <div class="flex-grow-1 min-w-0">
+                <div class="dh-mood-name">{% if entry.emotion %}{{ entry.emotion.name }}{% else %}{{ entry.category.name }}{% endif %}</div>
+                <div class="dh-mood-meta">{{ entry.user.username|default:"Unknown user" }} · {{ entry.created_at|date:"M j, g:i A" }}</div>
               </div>
-            </div>
+              {% if entry.rating %}<span class="dh-intensity-badge"><span class="dot"></span>{{ entry.rating }}/10</span>{% endif %}
+            </a>
             {% endfor %}
           </div>
           {% else %}
@@ -121,7 +115,6 @@
       </div>
     </div>
   </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -149,6 +142,11 @@
       var series = [{% for mood in moods %}{{ mood.value|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
       var labels = [{% for mood in moods %}"{{ mood.label|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
 
+      var pairs = labels.map(function (label, i) { return [label, series[i]]; })
+        .filter(function (pair) { return pair[1] > 0; });
+      labels = pairs.map(function (pair) { return pair[0]; });
+      series = pairs.map(function (pair) { return pair[1]; });
+
       if (!series.length || series.every(function(v){ return v === 0; })) {
         el.innerHTML = '<div class="text-muted">No mood data available.</div>';
         return;
@@ -162,6 +160,7 @@
           },
           labels: labels,
           series: series,
+          colors: ["#e7ae3f", "#e07a5f", "#8ab17d", "#5b8db8", "#b07cc6", "#3f9b95", "#d96c8a", "#a3a32f"],
           legend: {
             position: "bottom",
           },

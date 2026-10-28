@@ -1,0 +1,38 @@
+{% with app=request.resolver_match.app_name name=request.resolver_match.url_name %}
+<header class="dh-topbar">
+  <div class="container-xl">
+    <div class="dh-topbar-inner">
+      <div class="dh-breadcrumb">
+        <a href="{% url 'dashboard' %}"><i class="fas fa-house me-1"></i>Mood Tracker</a>
+        <i class="fas fa-chevron-right"></i>
+        <span class="current">
+          {% if name == 'dashboard' %}Dashboard
+          {% elif name == 'mood_entry_list' %}{% if request.user.is_staff or request.user.is_superuser %}Mood Entries{% else %}My Mood Entries{% endif %}
+          {% elif name == 'mood_entry_create' %}Daily Check-in
+          {% elif name == 'mood_entry_update' %}Edit Entry
+          {% elif name == 'mood_entry_detail' %}Entry Details
+          {% elif app == 'emotion' %}Emotions
+          {% elif app == 'message' %}Messages
+          {% elif app == 'info' %}Info
+          {% elif app == 'users' %}Users
+          {% elif app == 'mood_category' %}Mood Categories
+          {% elif name == 'profile' %}My Profile
+          {% elif name == 'change_password' %}Change Password
+          {% else %}Workspace{% endif %}
+        </span>
+      </div>
+      <div class="dh-topbar-meta">
+        <span class="dh-topbar-date"><i class="far fa-calendar"></i>{% now "l, F j" %}</span>
+        {% if request.user.is_staff or request.user.is_superuser %}
+        <span class="dh-role-pill">Admin</span>
+        {% else %}
+        <span class="dh-role-pill is-member">Member</span>
+        {% endif %}
+        <a href="{% url 'profile' %}" class="dh-topbar-avatar" title="{{ request.user.get_full_name|default:request.user.username }}">
+          {{ request.user.username|first|upper }}
+        </a>
+      </div>
+    </div>
+  </div>
+</header>
+{% endwith %}

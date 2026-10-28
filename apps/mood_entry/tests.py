@@ -186,6 +186,7 @@ class MoodEntryAdminFilterTests(TestCase):
         self.assertContains(response, 'own entry')
         self.assertContains(response, 'other entry')
         self.assertContains(response, 'All users')
+        self.assertContains(response, 'Export CSV')
 
     def test_admin_can_filter_by_user(self):
         self.client.force_login(self.admin)
@@ -221,13 +222,89 @@ class MoodEntryAdminFilterTests(TestCase):
         self.assertContains(response, 'other entry')
 
 
+class MoodEntryFactorTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='owner', password='secret1234')
+        self.category = MoodCategory.objects.create(name='Happy')
+        self.client.force_login(self.user)
+
+    def test_create_stores_selected_factors(self):
+        self.client.post(
+            reverse('mood_entry:mood_entry_create'),
+            {'category': self.category.pk, 'rating': '6', 'factors': ['Work', 'Sleep']},
+        )
+
+        entry = MoodEntry.objects.get(user=self.user)
+        self.assertEqual(entry.factors, 'Work, Sleep')
+        self.assertEqual(entry.factor_list, ['Work', 'Sleep'])
+
+    def test_unknown_factors_are_ignored(self):
+        self.client.post(
+            reverse('mood_entry:mood_entry_create'),
+            {'category': self.category.pk, 'rating': '6', 'factors': ['Work', 'NotARealFactor']},
+        )
+
+        self.assertEqual(MoodEntry.objects.get(user=self.user).factors, 'Work')
+
+    def test_detail_page_shows_factors(self):
+        entry = MoodEntry.objects.create(
+            category=self.category, user=self.user, factors='Family, Exercise'
+        )
+
+        response = self.client.get(reverse('mood_entry:mood_entry_detail', args=[entry.pk]))
+
+        self.assertContains(response, 'Family')
+        self.assertContains(response, 'Exercise')
+
+
+class MoodEntryExportTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username='admin', password='secret1234', is_staff=True
+        )
+        self.owner = User.objects.create_user(username='owner', password='secret1234')
+        self.other = User.objects.create_user(username='other', password='secret1234')
+        self.category = MoodCategory.objects.create(name='Happy')
+        MoodEntry.objects.create(category=self.category, user=self.owner, notes='own entry')
+        MoodEntry.objects.create(category=self.category, user=self.other, notes='other entry')
+        self.client.force_login(self.admin)
+
+    def test_admin_export_returns_csv(self):
+        response = self.client.get(reverse('mood_entry:mood_entry_export'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+        self.assertIn('attachment; filename="mood-entries.csv"', response['Content-Disposition'])
+
+        body = response.content.decode()
+        self.assertTrue(body.startswith('ID,User,Emotion,Mood category,Intensity,Factors,Notes,Created'))
+        self.assertIn('own entry', body)
+        self.assertIn('other entry', body)
+
+    def test_export_respects_user_filter(self):
+        response = self.client.get(
+            reverse('mood_entry:mood_entry_export'), {'user': self.other.pk}
+        )
+
+        body = response.content.decode()
+        self.assertIn('other entry', body)
+        self.assertNotIn('own entry', body)
+
+    def test_regular_user_cannot_export(self):
+        self.client.force_login(self.owner)
+
+        response = self.client.get(reverse('mood_entry:mood_entry_export'))
+
+        self.assertRedirects(response, reverse('dashboard'))
+
+
 class MoodEntryEmotionTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='owner', password='secret1234')
         self.category = MoodCategory.objects.create(name='Happy')
-        self.emotion = Emotion.objects.create(
-            name='Excited', emoji='🤩', tone=Emotion.Tone.POSITIVE
-        )
+        self.emotion = Emotion.objects.get_or_create(
+            name='Excited', defaults={'emoji': '🤩', 'tone': Emotion.Tone.POSITIVE}
+        )[0]
 
     def test_create_stores_emotion_and_shows_it_on_detail(self):
         self.client.force_login(self.user)

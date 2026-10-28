@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db.models import Count
+from django.db.models import Avg, Count
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -236,6 +236,8 @@ def home(request):
         trend_labels.append(day.strftime('%b %d'))
         trend_values.append(trend_counts.get(day, 0))
 
+    average_intensity = user_entries.aggregate(value=Avg('rating'))['value']
+
     context = {
         'greeting': _greeting(),
         'quick_moods': [
@@ -245,6 +247,7 @@ def home(request):
         'my_entries_count': user_entries.count(),
         'entries_last_7_days': user_entries.filter(created_at__date__gte=today - timedelta(days=6)).count(),
         'current_streak': _current_streak(entry_dates, today),
+        'average_intensity': round(average_intensity, 1) if average_intensity is not None else None,
         'top_mood': top_mood,
         'trend_labels': trend_labels,
         'trend_values': trend_values,

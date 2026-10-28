@@ -1,0 +1,233 @@
+{% extends "theme/base.html" %}
+{% block content %}
+  {% include 'theme/messages.html' %}
+
+  <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+    <div>
+      <div class="page-pretitle">Monitoring</div>
+      <h2 class="dh-page-title mb-1">Mood entries</h2>
+      <p class="text-muted mb-0">Every check-in captured across Mood Tracker members.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a href="{% url 'mood_entry:mood_entry_export' %}?{{ pagination_query }}" class="btn btn-outline-secondary">
+        <i class="fas fa-download me-1"></i> Export CSV
+      </a>
+      <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i> New entry
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-xl-3">
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon"><i class="fas fa-heart"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">Total entries</div>
+          <div class="dh-mini-value">{{ stats.total }}</div>
+          <div class="dh-mini-sub">all time</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon is-blue"><i class="fas fa-users"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">People tracking</div>
+          <div class="dh-mini-value">{{ stats.people }}</div>
+          <div class="dh-mini-sub">with at least one entry</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon is-orange"><i class="fas fa-gauge-high"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">Average intensity</div>
+          <div class="dh-mini-value">{% if stats.average %}{{ stats.average }}<span class="fs-4 text-muted">/10</span>{% else %}—{% endif %}</div>
+          <div class="dh-mini-sub">across rated entries</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="dh-mini-stat">
+        <span class="dh-mini-icon is-green"><i class="fas fa-face-smile"></i></span>
+        <div class="min-w-0">
+          <div class="dh-mini-label">Top mood</div>
+          <div class="dh-mini-value is-text">{{ stats.top_label|default:"—" }}</div>
+          <div class="dh-mini-sub">
+            {% if stats.top_label %}{{ stats.top_count }} entr{{ stats.top_count|pluralize:"y,ies" }}{% else %}No mood data yet{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card dh-filter-card mb-3">
+    <div class="card-body">
+      <form method="GET" class="row g-2 align-items-end">
+        <div class="col-12 col-xl-4">
+          <label class="form-label">Search</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Mood, emotion, or notes...">
+            <button type="submit" class="btn btn-primary">Filter</button>
+          </div>
+        </div>
+        <div class="col-6 col-xl-2">
+          <label class="form-label">Mood</label>
+          <select name="category" class="form-select">
+            <option value="">All moods</option>
+            {% for category in categories %}
+            <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-xl-2">
+          <label class="form-label">User</label>
+          <select name="user" class="form-select">
+            <option value="">All users</option>
+            {% for u in users %}
+            <option value="{{ u.pk }}" {% if selected_user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-xl-2">
+          <label class="form-label">From</label>
+          <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
+        </div>
+        <div class="col-6 col-xl-2">
+          <label class="form-label">To</label>
+          <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
+        </div>
+      </form>
+      {% if has_filters %}
+      <div class="mt-2">
+        <a href="{% url 'mood_entry:mood_entry_list' %}" class="small fw-semibold">Clear all filters</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">All mood entries</div>
+      <div class="card-options text-muted small">
+        {{ mood_entries.paginator.count }} result{{ mood_entries.paginator.count|pluralize }}
+        {% if query %} · search results for "{{ query }}"{% endif %}
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-vcenter table-hover card-table text-nowrap">
+        <thead>
+          <tr>
+            <th class="w-1 d-none d-md-table-cell">#</th>
+            <th>User</th>
+            <th>Feeling</th>
+            <th>Intensity</th>
+            <th class="d-none d-lg-table-cell">Notes</th>
+            <th class="d-none d-md-table-cell">Logged</th>
+            <th class="w-1">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for entry in mood_entries %}
+          <tr>
+            <td class="text-muted d-none d-md-table-cell">{{ forloop.counter0|add:mood_entries.start_index }}</td>
+            <td>
+              <div class="dh-user-chip">
+                <span class="dh-avatar-sm">{{ entry.user.username|first|upper }}</span>
+                <span class="text-truncate">{{ entry.user.get_full_name|default:entry.user.username }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="dh-mood-cell">
+                <span class="dh-mood-avatar">{{ entry.mood_emoji }}</span>
+                <div class="min-w-0">
+                  <div class="dh-mood-name">
+                    {% if entry.emotion %}{{ entry.emotion.name }}{% else %}{{ entry.category.name }}{% endif %}
+                  </div>
+                  {% if entry.emotion or entry.factors %}
+                  <div class="dh-mood-meta">
+                    {% if entry.emotion %}{{ entry.category.name }}{% endif %}{% if entry.emotion and entry.factors %} · {% endif %}{% if entry.factors %}{{ entry.factors|truncatechars:28 }}{% endif %}
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if entry.rating %}
+              <span class="dh-intensity-badge"><span class="dot"></span>{{ entry.rating }}<span class="fw-normal">/10</span></span>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="dh-cell-note text-wrap d-none d-lg-table-cell" style="max-width: 18rem;">{{ entry.notes|default:"—"|truncatechars:90 }}</td>
+            <td class="d-none d-md-table-cell">
+              <div class="dh-cell-date">{{ entry.created_at|date:"M j, Y" }}</div>
+              <div class="dh-mood-meta">{{ entry.created_at|date:"g:i A" }}</div>
+            </td>
+            <td>
+              <div class="d-flex gap-1 align-items-center">
+                <a href="{% url 'mood_entry:mood_entry_detail' entry.id %}" class="btn btn-ghost-secondary btn-icon btn-sm" title="View">
+                  <i class="fas fa-eye"></i>
+                </a>
+                <a href="{% url 'mood_entry:mood_entry_update' entry.id %}" class="btn btn-ghost-secondary btn-icon btn-sm" title="Edit">
+                  <i class="fas fa-pen"></i>
+                </a>
+                <form method="POST" action="{% url 'mood_entry:mood_entry_delete' entry.id %}" onsubmit="return confirm('Delete this mood entry?');">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-ghost-secondary btn-icon btn-sm" title="Delete">
+                    <i class="fas fa-trash-alt text-danger"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7">
+              <div class="dh-empty">
+                <div class="dh-empty-emoji">🗂️</div>
+                <div class="dh-empty-title">No mood entries found</div>
+                <p class="dh-empty-text">
+                  {% if has_filters %}No entries match these filters. Try widening the date range or clearing the search.{% else %}Once members start checking in, their entries will appear here.{% endif %}
+                </p>
+                {% if has_filters %}
+                <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-outline-secondary">Clear filters</a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if mood_entries.paginator.num_pages > 1 %}
+    <div class="card-footer d-flex flex-wrap align-items-center gap-2">
+      <p class="m-0 text-muted small">
+        Showing <span class="fw-semibold">{{ mood_entries.start_index }}–{{ mood_entries.end_index }}</span>
+        of <span class="fw-semibold">{{ mood_entries.paginator.count }}</span> entries
+      </p>
+      <ul class="pagination pagination-sm m-0 ms-auto">
+        {% if mood_entries.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?{{ pagination_query }}page={{ mood_entries.previous_page_number }}"><i class="fas fa-chevron-left"></i></a>
+        </li>
+        {% endif %}
+        {% for num in mood_entries.paginator.page_range %}
+        <li class="page-item {% if mood_entries.number == num %}active{% endif %}">
+          <a class="page-link" href="?{{ pagination_query }}page={{ num }}">{{ num }}</a>
+        </li>
+        {% endfor %}
+        {% if mood_entries.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?{{ pagination_query }}page={{ mood_entries.next_page_number }}"><i class="fas fa-chevron-right"></i></a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+{% endblock %}
