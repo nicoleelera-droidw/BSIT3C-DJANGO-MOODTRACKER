@@ -3,6 +3,7 @@
 
 {% block content %}
 <div class="container-xl">
+  {% include 'theme/messages.html' %}
   <div class="page-header d-print-none" aria-label="Page header">
     <div class="container-xl">
       <div class="row align-items-center">
@@ -27,14 +28,66 @@
         </div>
       </div>
     </div>
+    <div class="col-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="text-secondary">Mood Entries</div>
+          <div class="h1 mb-0">{{ total_entries }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="text-secondary">Support Messages</div>
+          <div class="h1 mb-0">{{ total_messages }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="text-secondary">Info Records</div>
+          <div class="h1 mb-0">{{ total_infos }}</div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="row g-3 mb-3">
-    <div class="col-12">
+    <div class="col-12 col-lg-7">
       <div class="card">
-        <div class="card-header">Moods</div>
+        <div class="card-header">Mood Distribution</div>
         <div class="card-body">
           <div id="chart-moods"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
+      <div class="card">
+        <div class="card-header">Recent Entries</div>
+        <div class="card-body">
+          {% if recent_entries %}
+          <div class="list-group list-group-flush">
+            {% for entry in recent_entries %}
+            <div class="list-group-item">
+              <div class="row align-items-center">
+                <div class="col text-truncate">
+                  <div class="text-body d-block">{{ entry.category.name }}</div>
+                  <div class="text-secondary text-truncate mt-n1">
+                    {{ entry.user.username|default:"Unknown user" }} — {{ entry.created_at|date:"M j, Y g:i A" }}
+                  </div>
+                </div>
+                <div class="col-auto">
+                  {% if entry.rating %}<span class="badge bg-blue-lt">{{ entry.rating }}/10</span>{% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="text-muted">No entries yet.</div>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -52,7 +105,7 @@
     function renderChart() {
       var el = document.getElementById("chart-moods");
       if (!el) { return; }
-      
+
       if (typeof ApexCharts === 'undefined') {
         attempts++;
         if (attempts < maxAttempts) {
@@ -80,9 +133,6 @@
           },
           labels: labels,
           series: series,
-          title: {
-            text: "Mood Distribution",
-          },
           legend: {
             position: "bottom",
           },

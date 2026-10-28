@@ -3,6 +3,7 @@
 
 {% block content %}
 <div class="container-xl">
+  {% include 'theme/messages.html' %}
   <div class="page-header d-print-none" aria-label="Page header">
     <div class="container-xl">
       <div class="row align-items-center">
@@ -10,6 +11,11 @@
           <div class="page-pretitle">Overview</div>
           <h2 class="page-title mb-0">My Dashboard</h2>
           <div class="text-muted mt-1">Welcome, {{ request.user.first_name|default:request.user.username }}! Track your mood and reflect on your journey.</div>
+        </div>
+        <div class="col-auto">
+          <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-primary">
+            <i class="ti ti-plus me-1"></i> New Mood Entry
+          </a>
         </div>
       </div>
     </div>
@@ -25,10 +31,47 @@
         </div>
       </div>
     </div>
+    <div class="col-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="text-secondary">Last 7 Days</div>
+          <div class="h1 mb-0">{{ entries_last_7_days }}</div>
+          <div class="text-secondary small">entries recorded</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="text-secondary">Current Streak</div>
+          <div class="h1 mb-0">{{ current_streak }}</div>
+          <div class="text-secondary small">day{{ current_streak|pluralize }} in a row</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="text-secondary">Top Mood</div>
+          <div class="h1 mb-0">{{ top_mood.label|default:"—" }}</div>
+          <div class="text-secondary small">
+            {% if top_mood %}{{ top_mood.count }} entr{{ top_mood.count|pluralize:"y,ies" }}{% else %}No entries yet{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="row g-3 mb-3">
-    <div class="col-12 col-lg-6">
+    <div class="col-12 col-lg-7">
+      <div class="card">
+        <div class="card-header">Mood Trend — Last 14 Days</div>
+        <div class="card-body">
+          <div id="chart-my-trend"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-lg-5">
       <div class="card">
         <div class="card-header">My Mood Distribution</div>
         <div class="card-body">
@@ -36,14 +79,22 @@
         </div>
       </div>
     </div>
-    <div class="col-12 col-lg-6">
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-12">
       <div class="card">
-        <div class="card-header">Recent Entries</div>
+        <div class="card-header">
+          <div class="card-title">Recent Entries</div>
+          <div class="card-options">
+            <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-sm btn-ghost-secondary">View all</a>
+          </div>
+        </div>
         <div class="card-body">
           {% if recent_entries %}
           <div class="list-group list-group-flush">
             {% for entry in recent_entries %}
-            <div class="list-group-item">
+            <a href="{% url 'mood_entry:mood_entry_detail' entry.id %}" class="list-group-item list-group-item-action">
               <div class="row align-items-center">
                 <div class="col text-truncate">
                   <div class="text-body d-block">{{ entry.category.name }}</div>
@@ -51,15 +102,16 @@
                     {% if entry.notes %}{{ entry.notes|truncatechars:60 }}{% else %}No notes{% endif %}
                   </div>
                 </div>
+                <div class="col-auto text-secondary">{{ entry.created_at|date:"M j, Y" }}</div>
                 <div class="col-auto">
                   {% if entry.rating %}<span class="badge bg-blue-lt">{{ entry.rating }}/10</span>{% endif %}
                 </div>
               </div>
-            </div>
+            </a>
             {% endfor %}
           </div>
           {% else %}
-          <div class="text-muted">No entries yet.</div>
+          <div class="text-muted">No entries yet. Record your first mood to start tracking your journey.</div>
           {% endif %}
         </div>
       </div>
@@ -75,48 +127,82 @@
     var attempts = 0;
     var maxAttempts = 60;
 
-    function renderChart() {
-      var el = document.getElementById("chart-my-moods");
-      if (!el) { return; }
-      
-      if (typeof ApexCharts === 'undefined') {
-        attempts++;
-        if (attempts < maxAttempts) {
-          setTimeout(renderChart, 100);
-          return;
-        }
-        el.innerHTML = '<div class="text-danger">Failed to load chart library.</div>';
+    function whenApexReady(callback) {
+      if (typeof ApexCharts !== 'undefined') {
+        callback();
         return;
       }
+      attempts++;
+      if (attempts < maxAttempts) {
+        setTimeout(function () { whenApexReady(callback); }, 100);
+        return;
+      }
+      document.querySelectorAll('[id^="chart-my-"]').forEach(function (el) {
+        el.innerHTML = '<div class="text-danger">Failed to load chart library.</div>';
+      });
+    }
+
+    function renderTrend() {
+      var el = document.getElementById("chart-my-trend");
+      if (!el) { return; }
+
+      var series = [{% for value in trend_values %}{{ value }}{% if not forloop.last %},{% endif %}{% endfor %}];
+      var labels = [{% for label in trend_labels %}"{{ label|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+
+      if (!series.some(function (v) { return v > 0; })) {
+        el.innerHTML = '<div class="text-muted">No entries in the last 14 days.</div>';
+        return;
+      }
+
+      new ApexCharts(el, {
+        chart: { type: "area", height: 300, toolbar: { show: false } },
+        series: [{ name: "Entries", data: series }],
+        xaxis: { categories: labels, labels: { rotate: -45 } },
+        yaxis: { min: 0, forceNiceScale: true, labels: { formatter: function (val) { return Math.round(val); } } },
+        stroke: { curve: "smooth", width: 2 },
+        dataLabels: { enabled: false },
+        colors: ["#206bc4"],
+        tooltip: { y: { formatter: function (val) { return val + (val === 1 ? " entry" : " entries"); } } },
+      }).render();
+    }
+
+    function renderDistribution() {
+      var el = document.getElementById("chart-my-moods");
+      if (!el) { return; }
 
       var series = [{% for stat in mood_stats %}{{ stat.value|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}];
       var labels = [{% for stat in mood_stats %}"{{ stat.label|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}];
 
-      if (!series.length || series.every(function(v){ return v === 0; })) {
+      if (!series.length || series.every(function (v) { return v === 0; })) {
         el.innerHTML = '<div class="text-muted">No mood data available.</div>';
         return;
       }
 
-      try {
-        var chart = new ApexCharts(el, {
-          chart: { type: "pie", height: 320 },
-          labels: labels,
-          series: series,
-          legend: { position: "bottom" },
-          dataLabels: { enabled: true, formatter: function (val) { return val.toFixed(1) + "%"; } },
-          tooltip: { y: { formatter: function (val, opts) { var label = opts.w.globals.labels[opts.seriesIndex]; return label + ": " + val; } } },
-        });
-        chart.render();
-      } catch (e) {
-        console.error('Failed to render chart', e);
-        el.innerHTML = '<div class="text-danger">Error rendering chart.</div>';
-      }
+      new ApexCharts(el, {
+        chart: { type: "pie", height: 300 },
+        labels: labels,
+        series: series,
+        legend: { position: "bottom" },
+        dataLabels: { enabled: true, formatter: function (val) { return val.toFixed(1) + "%"; } },
+        tooltip: { y: { formatter: function (val, opts) { var label = opts.w.globals.labels[opts.seriesIndex]; return label + ": " + val; } } },
+      }).render();
+    }
+
+    function start() {
+      whenApexReady(function () {
+        try {
+          renderTrend();
+          renderDistribution();
+        } catch (e) {
+          console.error('Failed to render dashboard charts', e);
+        }
+      });
     }
 
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', renderChart);
+      document.addEventListener('DOMContentLoaded', start);
     } else {
-      renderChart();
+      start();
     }
   })();
 </script>

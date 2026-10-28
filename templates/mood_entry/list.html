@@ -23,18 +23,35 @@
   </div>
   <br>
 
-  <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2 mb-1">
-    <form method="GET" class="w-100" style="max-width: 420px;">
-      <div class="input-group">
-        <span class="input-group-text"><i class="ti ti-search"></i></span>
-        <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search mood entries...">
-        {% if query %}
-        <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-outline-secondary">Clear</a>
-        {% endif %}
-        <button type="submit" class="btn btn-primary">Search</button>
-      </div>
-    </form>
-  </div>
+  <form method="GET" class="row g-2 align-items-end mb-3">
+    <div class="col-12 col-md-4">
+      <label class="form-label">Search</label>
+      <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Mood or notes...">
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label">Mood</label>
+      <select name="category" class="form-select">
+        <option value="">All moods</option>
+        {% for category in categories %}
+        <option value="{{ category.id }}" {% if selected_category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label">From</label>
+      <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label">To</label>
+      <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
+    </div>
+    <div class="col-12 col-md-2 d-flex gap-2">
+      <button type="submit" class="btn btn-primary flex-fill">Filter</button>
+      {% if has_filters %}
+      <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-outline-secondary flex-fill">Clear</a>
+      {% endif %}
+    </div>
+  </form>
 
   <div class="card">
     <div class="card-header">
@@ -53,6 +70,7 @@
             <th>Mood</th>
             <th>Rating</th>
             <th>Notes</th>
+            <th>Support Message</th>
             <th>Created</th>
             <th class="w-1">Actions</th>
           </tr>
@@ -64,24 +82,42 @@
           <td class="fw-semibold">{{ entry.category.name }}</td>
           <td><span class="badge bg-primary-lt text-primary">{{ entry.rating|default:"—" }}</span></td>
           <td class="text-muted">{{ entry.notes|default:"—" }}</td>
+          <td class="text-muted">
+            {% with support_message=entry.messages.all|first %}
+              {% if support_message %}
+                {{ support_message.body|truncatechars:90 }}
+              {% else %}
+                —
+              {% endif %}
+            {% endwith %}
+          </td>
           <td class="text-muted">{{ entry.created_at|date:"M j, Y" }}</td>
           <td>
-            <div class="d-flex gap-1">
-              <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-ghost-secondary btn-icon btn-sm" title="Edit">
+            <div class="d-flex gap-1 align-items-center">
+              <a href="{% url 'mood_entry:mood_entry_detail' entry.id %}" class="btn btn-ghost-secondary btn-icon btn-sm" title="View">
+                <i class="fas fa-eye text-primary"></i>
+              </a>
+              <a href="{% url 'mood_entry:mood_entry_update' entry.id %}" class="btn btn-ghost-secondary btn-icon btn-sm" title="Edit">
                 <i class="fas fa-edit text-primary"></i>
               </a>
+              <form method="POST" action="{% url 'mood_entry:mood_entry_delete' entry.id %}" onsubmit="return confirm('Delete this mood entry?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost-secondary btn-icon btn-sm" title="Delete">
+                  <i class="fas fa-trash-alt text-danger"></i>
+                </button>
+              </form>
             </div>
           </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="6">
+          <td colspan="7">
             <div class="empty py-5">
               <div class="empty-icon">
                 <i class="fas fa-heart fa-2x text-muted"></i>
               </div>
               <p class="empty-title">No mood entries found</p>
-              <p class="empty-subtitle">Try adjusting your search or add a new mood entry.</p>
+              <p class="empty-subtitle">{% if has_filters %}Try adjusting your filters or search.{% else %}Try adjusting your search or add a new mood entry to receive support messages automatically.{% endif %}</p>
               <div class="empty-action">
                 <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-primary">
                   <i class="ti ti-plus me-1"></i> New Mood Entry
@@ -103,17 +139,17 @@
       <ul class="pagination m-0 ms-auto">
         {% if mood_entries.has_previous %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ mood_entries.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">prev</a>
+          <a class="page-link" href="?{{ pagination_query }}page={{ mood_entries.previous_page_number }}">prev</a>
         </li>
         {% endif %}
         {% for num in mood_entries.paginator.page_range %}
         <li class="page-item {% if mood_entries.number == num %}active{% endif %}">
-          <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}">{{ num }}</a>
+          <a class="page-link" href="?{{ pagination_query }}page={{ num }}">{{ num }}</a>
         </li>
         {% endfor %}
         {% if mood_entries.has_next %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ mood_entries.next_page_number }}{% if query %}&q={{ query }}{% endif %}">next</a>
+          <a class="page-link" href="?{{ pagination_query }}page={{ mood_entries.next_page_number }}">next</a>
         </li>
         {% endif %}
       </ul>

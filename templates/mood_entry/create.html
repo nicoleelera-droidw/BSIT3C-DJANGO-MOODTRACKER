@@ -6,7 +6,7 @@
       <div class="row align-items-center">
         <div class="col">
           <div class="page-pretitle">Overview</div>
-          <h2 class="page-title mb-0">New Mood Entry</h2>
+          <h2 class="page-title mb-0">{{ page_title|default:"New Mood Entry" }}</h2>
         </div>
       </div>
     </div>
@@ -15,11 +15,11 @@
 
   <div class="card" style="max-width: 720px;">
     <div class="card-body">
-      <form method="POST" action="{% url 'mood_entry:mood_entry_create' %}">
+      <form method="POST">
         {% csrf_token %}
         {% if messages %}
         {% for message in messages %}
-        <div class="alert alert-danger">{{ message }}</div>
+        <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
         {% endfor %}
         {% endif %}
 
@@ -28,25 +28,32 @@
           <select name="category" id="id_category" class="form-select" required>
             <option value="">-- Choose a mood --</option>
             {% for category in categories %}
-            <option value="{{ category.id }}">{{ category.name }}</option>
+            <option value="{{ category.id }}" {% if form_data.category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
             {% endfor %}
           </select>
+          {% if errors.category %}
+          <div class="text-danger small mt-1">{{ errors.category }}</div>
+          {% endif %}
         </div>
 
         <div class="mb-3">
           <label class="form-label">Rating</label>
-          <input type="number" name="rating" id="id_rating" class="form-control" min="1" max="10" placeholder="1 - 10">
+          <input type="number" name="rating" id="id_rating" class="form-control" min="1" max="10" placeholder="1 - 10" value="{{ form_data.rating }}">
           <div class="form-hint">Optional. A whole number between 1 and 10.</div>
+          {% if errors.rating %}
+          <div class="text-danger small mt-1">{{ errors.rating }}</div>
+          {% endif %}
         </div>
 
         <div class="mb-3">
           <label class="form-label">Notes</label>
-          <textarea name="notes" id="id_notes" class="form-control" rows="4" placeholder="How did you feel?"></textarea>
+          <textarea name="notes" id="id_notes" class="form-control" rows="4" placeholder="How did you feel?">{{ form_data.notes }}</textarea>
+          <div class="form-hint">A supportive message will be generated automatically based on the mood you save.</div>
         </div>
 
         <div class="form-footer">
           <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-ghost-secondary">Cancel</a>
-          <button type="submit" class="btn btn-primary">Save Mood Entry</button>
+          <button type="submit" class="btn btn-primary">{{ submit_label|default:"Save Mood Entry" }}</button>
         </div>
       </form>
     </div>

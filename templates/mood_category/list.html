@@ -16,6 +16,8 @@
   </div>
   <br>
 
+  {% include 'theme/messages.html' %}
+
   <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2 mb-1">
     <form method="GET" class="w-100" style="max-width: 420px;">
       <div class="input-group">
@@ -68,9 +70,8 @@
                  class="btn btn-ghost-secondary btn-icon btn-sm"
                  data-bs-toggle="modal"
                  data-bs-target="#editMoodCategoryModal"
-                 data-mode="edit"
-                 data-id="{{ category.id }}"
                  data-name="{{ category.name }}"
+                 data-update-url="{% url 'mood_category:mood_category_update' category.id %}"
                  title="Edit">
                 <i class="fas fa-edit text-primary"></i>
               </a>
@@ -78,8 +79,8 @@
                  class="btn btn-ghost-secondary btn-icon btn-sm"
                  data-bs-toggle="modal"
                  data-bs-target="#deleteMoodCategoryModal"
-                 data-id="{{ category.id }}"
                  data-name="{{ category.name }}"
+                 data-delete-url="{% url 'mood_category:mood_category_delete' category.id %}"
                  title="Delete">
                 <i class="fas fa-trash-alt text-danger"></i>
               </a>
@@ -143,11 +144,9 @@
         <h5 class="modal-title" id="editMoodCategoryModalTitle">Edit Mood Category</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <form id="editMoodCategoryForm">
+      <form id="editMoodCategoryForm" method="POST" action="">
         {% csrf_token %}
-        <input type="hidden" name="id" id="edit_mood_category_id">
         <div class="modal-body">
-          <div id="editMoodCategoryFormError" class="alert alert-danger d-none"></div>
           <div class="mb-3">
             <label class="form-label">Name</label>
             <input type="text" name="name" id="edit_mood_category_name" class="form-control" required>
@@ -170,14 +169,48 @@
         <h5 class="modal-title text-danger">Delete Mood Category</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
-        <p class="text-muted">Are you sure you want to delete <strong id="deleteMoodCategoryName"></strong>? This cannot be undone.</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" id="confirmDeleteMoodCategoryBtn">Delete</button>
-      </div>
+      <form id="deleteMoodCategoryForm" method="POST" action="">
+        {% csrf_token %}
+        <div class="modal-body">
+          <p class="text-muted">Are you sure you want to delete <strong id="deleteMoodCategoryName"></strong>? This cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Delete</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const editModal = document.getElementById('editMoodCategoryModal');
+  const editForm = document.getElementById('editMoodCategoryForm');
+  const editName = document.getElementById('edit_mood_category_name');
+
+  editModal.addEventListener('show.bs.modal', function (event) {
+    const trigger = event.relatedTarget;
+    editForm.action = trigger.dataset.updateUrl;
+    editName.value = trigger.dataset.name || '';
+  });
+
+  editModal.addEventListener('shown.bs.modal', function () {
+    editName.focus();
+    editName.select();
+  });
+
+  const deleteModal = document.getElementById('deleteMoodCategoryModal');
+  const deleteForm = document.getElementById('deleteMoodCategoryForm');
+  const deleteName = document.getElementById('deleteMoodCategoryName');
+
+  deleteModal.addEventListener('show.bs.modal', function (event) {
+    const trigger = event.relatedTarget;
+    deleteForm.action = trigger.dataset.deleteUrl;
+    deleteName.textContent = trigger.dataset.name || '';
+  });
+})();
+</script>
 {% endblock %}

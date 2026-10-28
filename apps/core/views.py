@@ -6,11 +6,13 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+from django.db.models import Count
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from apps.info.models import Info
+from apps.message.models import Message
 from apps.mood_category.models import MoodCategory
 from apps.mood_entry.models import MoodEntry
 
@@ -18,6 +20,7 @@ User = get_user_model()
 
 MAX_FAILED_ATTEMPTS = 5
 LOCK_DURATION = timedelta(minutes=1)
+TREND_DAYS = 14
 INVALID_LOGIN_MESSAGE = 'Invalid username or password.'
 LOCKED_MESSAGE = 'Too many failed attempts. Locked for 1 minute.'
 
@@ -53,6 +56,16 @@ def _set_lock_state(request):
     request.session['failed_attempts'] = MAX_FAILED_ATTEMPTS
     request.session['lock_time'] = lock_until.isoformat()
     return int(LOCK_DURATION.total_seconds())
+
+
+def _current_streak(entry_dates, today):
+    """Count consecutive days with at least one entry, ending today or yesterday."""
+    streak = 0
+    cursor = today if today in entry_dates else today - timedelta(days=1)
+    while cursor in entry_dates:
+        streak += 1
+        cursor -= timedelta(days=1)
+    return streak
 
 
 def _validate_registration_data(data):
@@ -123,6 +136,7 @@ def login_view(request):
     if user is not None:
         _reset_lock_state(request)
         login(request, user)
+        messages.success(request, f'Welcome back, {user.first_name or user.username}!')
         return redirect('dashboard')
 
     failed_attempts += 1
@@ -144,43 +158,62 @@ def logout_view(request):
 
 @login_required(login_url='login')
 def home(request):
+    today = timezone.localdate()
+
     if request.user.is_staff or request.user.is_superuser:
         context = {
             'total_users': User.objects.count(),
             'total_infos': Info.objects.count(),
+            'total_entries': MoodEntry.objects.count(),
+            'total_messages': Message.objects.count(),
             'moods': [
-                {
-                    'label': category.name,
-                    'value': MoodEntry.objects.filter(category=category).count(),
-                }
-                for category in MoodCategory.objects.all().order_by('name')
+                {'label': category.name, 'value': category.value}
+                for category in MoodCategory.objects.annotate(value=Count('entries')).order_by('name')
             ],
+            'recent_entries': MoodEntry.objects.select_related('category', 'user').order_by('-created_at')[:5],
         }
         return render(request, 'home.html', context)
-    
+
     user_entries = MoodEntry.objects.filter(user=request.user).select_related('category')
-    context = {
-        'my_entries_count': user_entries.count(),
-        'my_moods': [
-            {
-                'label': entry.category.name,
-                'value': 1,
-            }
-            for entry in user_entries
-        ],
-        'recent_entries': user_entries.order_by('-created_at')[:5] if hasattr(MoodEntry, 'created_at') else user_entries.order_by('-id')[:5],
-    }
-    # Aggregate by category for user
-    from django.db.models import Count
-    mood_stats = (
+    entry_dates = set(user_entries.values_list('created_at__date', flat=True))
+
+    mood_stats = list(
         user_entries.values('category__name')
         .annotate(count=Count('id'))
         .order_by('category__name')
     )
-    context['mood_stats'] = [
-        {'label': item['category__name'], 'value': item['count']}
-        for item in mood_stats
-    ]
+    top_mood = None
+    if mood_stats:
+        top_row = max(mood_stats, key=lambda row: row['count'])
+        top_mood = {'label': top_row['category__name'], 'count': top_row['count']}
+
+    trend_start = today - timedelta(days=TREND_DAYS - 1)
+    trend_counts = {
+        row['created_at__date']: row['count']
+        for row in user_entries.filter(created_at__date__gte=trend_start)
+        .values('created_at__date')
+        .annotate(count=Count('id'))
+    }
+    trend_labels = []
+    trend_values = []
+    for offset in range(TREND_DAYS):
+        day = trend_start + timedelta(days=offset)
+        trend_labels.append(day.strftime('%b %d'))
+        trend_values.append(trend_counts.get(day, 0))
+
+    context = {
+        'my_entries_count': user_entries.count(),
+        'entries_last_7_days': user_entries.filter(created_at__date__gte=today - timedelta(days=6)).count(),
+        'current_streak': _current_streak(entry_dates, today),
+        'top_mood': top_mood,
+        'trend_labels': trend_labels,
+        'trend_values': trend_values,
+        'mood_stats': [
+            {'label': item['category__name'], 'value': item['count']}
+            for item in mood_stats
+        ],
+        'recent_entries': user_entries.order_by('-created_at')[:5],
+    }
     return render(request, 'home_user.html', context)
 
 
@@ -213,4 +246,8 @@ def register_view(request):
         password=form_data['password'],
     )
     login(request, user)
+    messages.success(
+        request,
+        f'Welcome to Mood Tracker, {user.first_name}! Your account is ready.',
+    )
     return redirect('dashboard')

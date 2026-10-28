@@ -1,0 +1,98 @@
+{% extends "theme/base.html" %}
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none" aria-label="Page header">
+    <div class="container-xl">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="page-pretitle">{{ mood_entry.created_at|date:"F j, Y" }}</div>
+          <h2 class="page-title mb-0">Mood Entry</h2>
+        </div>
+        <div class="col-auto">
+          <div class="btn-list">
+            <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-ghost-secondary">
+              <i class="ti ti-arrow-left me-1"></i> Back to Entries
+            </a>
+            <a href="{% url 'mood_entry:mood_entry_create' %}" class="btn btn-primary">
+              <i class="ti ti-plus me-1"></i> New Mood Entry
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <br>
+
+  {% include 'theme/messages.html' %}
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Support Message</div>
+          <div class="card-options text-muted small">Generated from your selected mood</div>
+        </div>
+        <div class="card-body">
+          {% if support_message %}
+          <blockquote class="mb-0 fs-3">{{ support_message.body }}</blockquote>
+          {% else %}
+          <p class="text-muted mb-0">No support message is available for this entry yet.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header">
+          <div class="card-title">Notes</div>
+        </div>
+        <div class="card-body">
+          {{ mood_entry.notes|default:"No notes were added."|linebreaks }}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Entry Details</div>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <div class="text-secondary">Mood</div>
+            <div class="h3 mb-0">{{ mood_entry.category.name }}</div>
+          </div>
+          <div class="mb-3">
+            <div class="text-secondary">Rating</div>
+            <div>
+              {% if mood_entry.rating %}
+              <span class="badge bg-primary-lt text-primary">{{ mood_entry.rating }} / 10</span>
+              {% else %}
+              <span class="text-muted">Not rated</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="mb-3">
+            <div class="text-secondary">Recorded</div>
+            <div>{{ mood_entry.created_at|date:"M j, Y g:i A" }}</div>
+          </div>
+          <div>
+            <div class="text-secondary">Last Updated</div>
+            <div>{{ mood_entry.updated_at|date:"M j, Y g:i A" }}</div>
+          </div>
+        </div>
+        <div class="card-footer d-flex gap-2">
+          <a href="{% url 'mood_entry:mood_entry_update' mood_entry.id %}" class="btn btn-primary flex-fill">
+            <i class="fas fa-edit me-1"></i> Edit
+          </a>
+          <form method="POST" action="{% url 'mood_entry:mood_entry_delete' mood_entry.id %}" class="flex-fill" onsubmit="return confirm('Delete this mood entry?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger w-100">
+              <i class="fas fa-trash-alt me-1"></i> Delete
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
