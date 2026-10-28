@@ -24,6 +24,7 @@ urlpatterns = [
     path('', include('apps.core.urls')),
     path('users/', include('apps.users.urls')),
     path('info/', include('apps.info.urls')),
+    path('emotion/', include('apps.emotion.urls')),
     path('mood_category/', include('apps.mood_category.urls')),
     path('mood_entry/', include('apps.mood_entry.urls')),
     path('message/', include('apps.message.urls')),

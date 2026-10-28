@@ -72,6 +72,15 @@
         </li>
 
         <li class="nav-item mb-1">
+          <a class="nav-link {% if request.resolver_match.app_name == 'emotion' %}active{% endif %}" href="{% url 'emotion:emotion_list' %}">
+            <span class="nav-link-icon d-md-none d-lg-inline-block">
+              <i class="fa fa-smile"></i>
+            </span>
+            <span class="nav-link-title">Emotions</span>
+          </a>
+        </li>
+
+        <li class="nav-item mb-1">
           <a class="nav-link {% if request.resolver_match.app_name == 'mood_entry' %}active{% endif %}" href="{% url 'mood_entry:mood_entry_list' %}">
             <span class="nav-link-icon d-md-none d-lg-inline-block">
               <i class="fa fa-heart"></i>

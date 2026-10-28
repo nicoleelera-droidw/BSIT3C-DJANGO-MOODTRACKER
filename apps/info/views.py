@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.contrib import messages
@@ -9,11 +10,26 @@ from django.core.validators import validate_email
 from django.db import IntegrityError
 from django.db.models import Q
 
+from apps.access import is_admin
 from apps.scoping import scoped_info, scoped_infos
 from .models import Info
 
+User = get_user_model()
+
 MIN_AGE = 1
 MAX_AGE = 150
+
+
+def _filter_users():
+    """Return users who own at least one info record, for the admin user filter."""
+    return User.objects.filter(infos__isnull=False).distinct().order_by('username')
+
+
+def _pagination_query(request):
+    params = request.GET.copy()
+    params.pop('page', None)
+    query = params.urlencode()
+    return f'{query}&' if query else ''
 
 
 def _parse_age(raw_age):
@@ -28,8 +44,10 @@ def _parse_age(raw_age):
 def info_list_page(request):
     """Render the searchable, paginated info list for the signed-in user."""
     query = request.GET.get('q', '').strip()
+    user_id = request.GET.get('user', '').strip()
+    admin_view = is_admin(request.user)
 
-    infos_list = scoped_infos(request.user).order_by('name')
+    infos_list = scoped_infos(request.user).select_related('user').order_by('name')
 
     if query:
         infos_list = infos_list.filter(
@@ -37,6 +55,9 @@ def info_list_page(request):
             Q(address__icontains=query) |
             Q(email__icontains=query)
         )
+
+    if admin_view and user_id.isdigit():
+        infos_list = infos_list.filter(user_id=user_id)
 
     paginator = Paginator(infos_list, 10)
     page_number = request.GET.get('page', 1)
@@ -45,6 +66,11 @@ def info_list_page(request):
     return render(request, 'info.html', {
         'infos': infos,
         'query': query,
+        'is_admin_view': admin_view,
+        'users': _filter_users() if admin_view else User.objects.none(),
+        'selected_user': user_id,
+        'has_filters': bool(query or (admin_view and user_id.isdigit())),
+        'pagination_query': _pagination_query(request),
     })
 
 
@@ -52,6 +78,8 @@ def info_list_page(request):
 def info_list_ajax(request):
     """Return the signed-in user's filtered info records as paginated JSON."""
     query = request.GET.get('q', '').strip()
+    user_id = request.GET.get('user', '').strip()
+    admin_view = is_admin(request.user)
 
     infos_list = scoped_infos(request.user).order_by('name')
 
@@ -61,6 +89,9 @@ def info_list_ajax(request):
             Q(address__icontains=query) |
             Q(email__icontains=query)
         )
+
+    if admin_view and user_id.isdigit():
+        infos_list = infos_list.filter(user_id=user_id)
 
     paginator = Paginator(infos_list, 10)
     page_number = request.GET.get('page', 1)

@@ -3,6 +3,7 @@
 from django.conf import settings
 from django.db import models
 
+from apps.emotion.models import Emotion
 from apps.mood_category.models import MoodCategory
 
 
@@ -11,6 +12,13 @@ class MoodEntry(models.Model):
         MoodCategory,
         related_name='entries',
         on_delete=models.CASCADE,
+    )
+    emotion = models.ForeignKey(
+        Emotion,
+        related_name='entries',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     rating = models.PositiveSmallIntegerField(null=True, blank=True)
     notes = models.TextField(blank=True)

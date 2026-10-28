@@ -62,6 +62,18 @@
             <div class="h3 mb-0">{{ mood_entry.category.name }}</div>
           </div>
           <div class="mb-3">
+            <div class="text-secondary">Emotion</div>
+            {% if mood_entry.emotion %}
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <span class="emotion-emoji emotion-emoji-sm">{{ mood_entry.emotion.emoji|default:"🙂" }}</span>
+              <span class="fw-semibold">{{ mood_entry.emotion.name }}</span>
+              <span class="badge {{ mood_entry.emotion.tone_badge_class }}">{{ mood_entry.emotion.get_tone_display }}</span>
+            </div>
+            {% else %}
+            <span class="text-muted">Not specified</span>
+            {% endif %}
+          </div>
+          <div class="mb-3">
             <div class="text-secondary">Rating</div>
             <div>
               {% if mood_entry.rating %}

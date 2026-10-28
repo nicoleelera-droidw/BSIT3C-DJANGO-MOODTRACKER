@@ -1,0 +1,82 @@
+{% extends "theme/base.html" %}
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none" aria-label="Page header">
+    <div class="container-xl">
+      <div class="row align-items-center">
+        <div class="col">
+          <div class="page-pretitle">Overview</div>
+          <h2 class="page-title mb-0">{{ page_title|default:"New Emotion" }}</h2>
+        </div>
+      </div>
+    </div>
+  </div>
+  <br>
+
+  <div class="card" style="max-width: 720px;">
+    <div class="card-body">
+      <form method="POST" action="{% if emotion %}{% url 'emotion:emotion_update' emotion.pk %}{% else %}{% url 'emotion:emotion_create' %}{% endif %}">
+        {% csrf_token %}
+        {% include 'theme/messages.html' %}
+
+        <div class="row g-2 mb-3">
+          <div class="col-12 col-md-4">
+            <label class="form-label">Emoji</label>
+            <div class="input-group">
+              <span class="input-group-text"><span id="emojiPreview">{{ form_data.emoji|default:"🙂" }}</span></span>
+              <input type="text" name="emoji" id="id_emoji" class="form-control" maxlength="8" placeholder="😊" value="{{ form_data.emoji }}">
+            </div>
+            <div class="form-hint">Optional. One emoji.</div>
+            {% if errors.emoji %}
+            <div class="text-danger small mt-1">{{ errors.emoji }}</div>
+            {% endif %}
+          </div>
+          <div class="col-12 col-md-8">
+            <label class="form-label required">Emotion name</label>
+            <input type="text" name="name" id="id_name" class="form-control" placeholder="e.g. Joy, Anxious" value="{{ form_data.name }}" required>
+            {% if errors.name %}
+            <div class="text-danger small mt-1">{{ errors.name }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label required">Tone</label>
+          <select name="tone" id="id_tone" class="form-select" required>
+            {% for value, label in tones %}
+            <option value="{{ value }}" {% if form_data.tone == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-hint">Used to group and filter emotions in the library.</div>
+          {% if errors.tone %}
+          <div class="text-danger small mt-1">{{ errors.tone }}</div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea name="description" id="id_description" class="form-control" rows="3" placeholder="What does this emotion feel like?">{{ form_data.description }}</textarea>
+          <div class="form-hint">Optional. A short line shown on the emotion card.</div>
+        </div>
+
+        <div class="form-footer">
+          <a href="{% url 'emotion:emotion_list' %}" class="btn btn-ghost-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">{{ submit_label|default:"Save Emotion" }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const input = document.getElementById('id_emoji');
+  const preview = document.getElementById('emojiPreview');
+  input.addEventListener('input', function () {
+    preview.textContent = input.value.trim() || '🙂';
+  });
+})();
+</script>
+{% endblock %}

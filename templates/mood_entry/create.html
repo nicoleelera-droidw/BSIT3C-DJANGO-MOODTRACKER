@@ -37,6 +37,20 @@
         </div>
 
         <div class="mb-3">
+          <label class="form-label">Emotion</label>
+          <select name="emotion" id="id_emotion" class="form-select">
+            <option value="">-- No specific emotion --</option>
+            {% for emotion in emotions %}
+            <option value="{{ emotion.id }}" {% if form_data.emotion == emotion.id|stringformat:"s" %}selected{% endif %}>{{ emotion.emoji }} {{ emotion.name }} ({{ emotion.get_tone_display }})</option>
+            {% endfor %}
+          </select>
+          <div class="form-hint">Optional. Pick the feeling that fits best.</div>
+          {% if errors.emotion %}
+          <div class="text-danger small mt-1">{{ errors.emotion }}</div>
+          {% endif %}
+        </div>
+
+        <div class="mb-3">
           <label class="form-label">Rating</label>
           <input type="number" name="rating" id="id_rating" class="form-control" min="1" max="10" placeholder="1 - 10" value="{{ form_data.rating }}">
           <div class="form-hint">Optional. A whole number between 1 and 10.</div>

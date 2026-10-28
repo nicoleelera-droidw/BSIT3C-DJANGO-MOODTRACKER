@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'apps.core',
     'apps.users',
     'apps.info',
+    'apps.emotion',
     'apps.mood_category',
     'apps.mood_entry',
     'apps.message',
@@ -87,6 +88,12 @@ DATABASES = {
         'PASSWORD': '',
         'HOST': 'localhost',
         'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+        },
+        'TEST': {
+            'CHARSET': 'utf8mb4',
+        },
     }
 }
 

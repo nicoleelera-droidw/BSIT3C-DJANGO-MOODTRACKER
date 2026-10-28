@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.emotion.models import Emotion
 from apps.message.models import Message
 from apps.mood_category.models import MoodCategory
 from apps.mood_entry.models import MoodEntry
@@ -157,3 +158,150 @@ class MoodEntryFilterTests(TestCase):
 
         self.assertEqual(response.context['mood_entries'].paginator.count, 12)
         self.assertEqual(response.context['pagination_query'], f'category={self.sad.pk}&')
+
+
+class MoodEntryAdminFilterTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(username='admin', password='secret1234', is_staff=True)
+        self.owner = User.objects.create_user(username='owner', password='secret1234')
+        self.other = User.objects.create_user(username='other', password='secret1234')
+        self.category = MoodCategory.objects.create(name='Happy')
+
+        MoodEntry.objects.create(category=self.category, user=self.owner, notes='own entry')
+        self.other_entry = MoodEntry.objects.create(
+            category=self.category, user=self.other, notes='other entry'
+        )
+
+    def _count(self, params=None):
+        response = self.client.get(reverse('mood_entry:mood_entry_list'), params or {})
+        self.assertEqual(response.status_code, 200)
+        return response.context['mood_entries'].paginator.count
+
+    def test_admin_sees_entries_of_every_user(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse('mood_entry:mood_entry_list'))
+
+        self.assertEqual(response.context['mood_entries'].paginator.count, 2)
+        self.assertContains(response, 'own entry')
+        self.assertContains(response, 'other entry')
+        self.assertContains(response, 'All users')
+
+    def test_admin_can_filter_by_user(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(
+            reverse('mood_entry:mood_entry_list'), {'user': self.other.pk}
+        )
+
+        self.assertEqual(response.context['mood_entries'].paginator.count, 1)
+        self.assertContains(response, 'other entry')
+        self.assertNotContains(response, 'own entry')
+
+    def test_regular_user_sees_only_own_entries_and_filter_is_ignored(self):
+        self.client.force_login(self.owner)
+
+        self.assertEqual(self._count(), 1)
+        response = self.client.get(
+            reverse('mood_entry:mood_entry_list'), {'user': self.other.pk}
+        )
+
+        self.assertEqual(response.context['mood_entries'].paginator.count, 1)
+        self.assertNotContains(response, 'other entry')
+        self.assertNotContains(response, 'All users')
+
+    def test_admin_can_open_another_users_entry(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(
+            reverse('mood_entry:mood_entry_detail', args=[self.other_entry.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'other entry')
+
+
+class MoodEntryEmotionTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='owner', password='secret1234')
+        self.category = MoodCategory.objects.create(name='Happy')
+        self.emotion = Emotion.objects.create(
+            name='Excited', emoji='🤩', tone=Emotion.Tone.POSITIVE
+        )
+
+    def test_create_stores_emotion_and_shows_it_on_detail(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse('mood_entry:mood_entry_create'),
+            {
+                'category': self.category.pk,
+                'emotion': self.emotion.pk,
+                'rating': '7',
+                'notes': 'Great news',
+            },
+        )
+
+        entry = MoodEntry.objects.get(user=self.user)
+        self.assertRedirects(response, reverse('mood_entry:mood_entry_detail', args=[entry.pk]))
+        self.assertEqual(entry.emotion, self.emotion)
+        self.assertContains(
+            self.client.get(reverse('mood_entry:mood_entry_detail', args=[entry.pk])),
+            'Excited',
+        )
+
+    def test_emotion_is_optional(self):
+        self.client.force_login(self.user)
+
+        self.client.post(
+            reverse('mood_entry:mood_entry_create'),
+            {'category': self.category.pk, 'emotion': '', 'rating': ''},
+        )
+
+        self.assertIsNone(MoodEntry.objects.get(user=self.user).emotion)
+
+    def test_invalid_emotion_shows_form_error(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse('mood_entry:mood_entry_create'),
+            {'category': self.category.pk, 'emotion': '9999', 'rating': ''},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Please choose a valid emotion.')
+        self.assertFalse(MoodEntry.objects.filter(user=self.user).exists())
+
+    def test_update_can_clear_emotion(self):
+        entry = MoodEntry.objects.create(
+            category=self.category, emotion=self.emotion, user=self.user
+        )
+        self.client.force_login(self.user)
+
+        self.client.post(
+            reverse('mood_entry:mood_entry_update', args=[entry.pk]),
+            {'category': self.category.pk, 'emotion': '', 'rating': ''},
+        )
+
+        entry.refresh_from_db()
+        self.assertIsNone(entry.emotion)
+
+    def test_search_matches_emotion_name(self):
+        MoodEntry.objects.create(category=self.category, emotion=self.emotion, user=self.user)
+        MoodEntry.objects.create(category=self.category, user=self.user)
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse('mood_entry:mood_entry_list'), {'q': 'excit'})
+
+        self.assertEqual(response.context['mood_entries'].paginator.count, 1)
+
+    def test_non_numeric_category_shows_form_error(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse('mood_entry:mood_entry_create'),
+            {'category': 'abc', 'emotion': '', 'rating': ''},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Please choose a valid mood category.')

@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -6,10 +7,14 @@ from django.shortcuts import redirect, render
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_http_methods
 
+from apps.access import is_admin
+from apps.emotion.models import Emotion
 from apps.message.services import sync_message_for_entry
 from apps.mood_category.models import MoodCategory
 from apps.scoping import scoped_mood_entries, scoped_mood_entry
 from .models import MoodEntry
+
+User = get_user_model()
 
 MIN_RATING = 1
 MAX_RATING = 10
@@ -24,6 +29,10 @@ def _build_form_data(request, mood_entry=None):
 
     return {
         'category': request.POST.get('category', default_category),
+        'emotion': request.POST.get(
+            'emotion',
+            '' if mood_entry is None or mood_entry.emotion_id is None else str(mood_entry.emotion_id),
+        ),
         'rating': request.POST.get('rating', '' if mood_entry is None or mood_entry.rating is None else str(mood_entry.rating)),
         'notes': request.POST.get('notes', '' if mood_entry is None else mood_entry.notes),
     }
@@ -31,10 +40,26 @@ def _build_form_data(request, mood_entry=None):
 
 def _validate_mood_entry_form(form_data):
     errors = {}
-    category = MoodCategory.objects.filter(pk=form_data.get('category')).first()
+    category_id = form_data.get('category')
+    category = (
+        MoodCategory.objects.filter(pk=category_id).first()
+        if str(category_id).isdigit()
+        else None
+    )
 
     if category is None:
         errors['category'] = 'Please choose a valid mood category.'
+
+    emotion = None
+    emotion_id = form_data.get('emotion')
+    if emotion_id not in (None, ''):
+        emotion = (
+            Emotion.objects.filter(pk=emotion_id).first()
+            if str(emotion_id).isdigit()
+            else None
+        )
+        if emotion is None:
+            errors['emotion'] = 'Please choose a valid emotion.'
 
     rating_value = None
     rating = form_data.get('rating')
@@ -47,7 +72,7 @@ def _validate_mood_entry_form(form_data):
             if rating_value < MIN_RATING or rating_value > MAX_RATING:
                 errors['rating'] = f'Rating must be between {MIN_RATING} and {MAX_RATING}.'
 
-    return errors, category, rating_value
+    return errors, category, emotion, rating_value
 
 
 def _render_mood_entry_form(request, categories, form_data, errors, *, mood_entry=None):
@@ -57,6 +82,7 @@ def _render_mood_entry_form(request, categories, form_data, errors, *, mood_entr
         'mood_entry/create.html',
         {
             'categories': categories,
+            'emotions': Emotion.objects.all(),
             'errors': errors,
             'form_data': form_data,
             'mood_entry': mood_entry,
@@ -83,15 +109,23 @@ def mood_entry_list(request):
     """Render the signed-in user's searchable, filtered, paginated mood entries."""
     query = request.GET.get('q', '').strip()
     category_id = request.GET.get('category', '').strip()
+    user_id = request.GET.get('user', '').strip()
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
+    admin_view = is_admin(request.user)
 
-    mood_entries = scoped_mood_entries(request.user).select_related('category').prefetch_related('messages').order_by('-created_at')
+    mood_entries = scoped_mood_entries(request.user).select_related('category', 'emotion', 'user').prefetch_related('messages').order_by('-created_at')
 
     if query:
-        mood_entries = mood_entries.filter(Q(category__name__icontains=query) | Q(notes__icontains=query))
+        mood_entries = mood_entries.filter(
+            Q(category__name__icontains=query)
+            | Q(emotion__name__icontains=query)
+            | Q(notes__icontains=query)
+        )
     if category_id.isdigit():
         mood_entries = mood_entries.filter(category_id=category_id)
+    if admin_view and user_id.isdigit():
+        mood_entries = mood_entries.filter(user_id=user_id)
 
     parsed_from = parse_date(date_from)
     parsed_to = parse_date(date_to)
@@ -118,7 +152,10 @@ def mood_entry_list(request):
         'selected_category': category_id,
         'date_from': date_from,
         'date_to': date_to,
-        'has_filters': bool(query or category_id or parsed_from or parsed_to),
+        'is_admin_view': admin_view,
+        'users': User.objects.filter(mood_entries__isnull=False).distinct().order_by('username') if admin_view else User.objects.none(),
+        'selected_user': user_id,
+        'has_filters': bool(query or category_id or parsed_from or parsed_to or (admin_view and user_id.isdigit())),
         'pagination_query': pagination_query,
     })
 
@@ -131,12 +168,13 @@ def mood_entry_create(request):
 
     if request.method == 'POST':
         form_data = _build_form_data(request)
-        errors, category, rating_value = _validate_mood_entry_form(form_data)
+        errors, category, emotion, rating_value = _validate_mood_entry_form(form_data)
         if errors:
             return _render_mood_entry_form(request, categories, form_data, errors)
 
         mood_entry = MoodEntry.objects.create(
             category=category,
+            emotion=emotion,
             rating=rating_value,
             notes=form_data['notes'].strip(),
             user=request.user,
@@ -156,11 +194,12 @@ def mood_entry_update(request, pk):
 
     if request.method == 'POST':
         form_data = _build_form_data(request, mood_entry)
-        errors, category, rating_value = _validate_mood_entry_form(form_data)
+        errors, category, emotion, rating_value = _validate_mood_entry_form(form_data)
         if errors:
             return _render_mood_entry_form(request, categories, form_data, errors, mood_entry=mood_entry)
 
         mood_entry.category = category
+        mood_entry.emotion = emotion
         mood_entry.rating = rating_value
         mood_entry.notes = form_data['notes'].strip()
         mood_entry.save()

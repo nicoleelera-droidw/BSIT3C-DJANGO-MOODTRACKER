@@ -24,9 +24,16 @@
   <br>
 
   <form method="GET" class="row g-2 align-items-end mb-3">
-    <div class="col-12 col-md-4">
+    <div class="col-12 {% if is_admin_view %}col-md-4{% else %}col-md-6{% endif %}">
       <label class="form-label">Search</label>
-      <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Mood or notes...">
+      <div class="input-group">
+        <span class="input-group-text"><i class="ti ti-search"></i></span>
+        <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Mood or notes...">
+        {% if has_filters %}
+        <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-outline-secondary">Clear</a>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">Filter</button>
+      </div>
     </div>
     <div class="col-6 col-md-2">
       <label class="form-label">Mood</label>
@@ -37,6 +44,17 @@
         {% endfor %}
       </select>
     </div>
+    {% if is_admin_view %}
+    <div class="col-6 col-md-2">
+      <label class="form-label">User</label>
+      <select name="user" class="form-select">
+        <option value="">All users</option>
+        {% for u in users %}
+        <option value="{{ u.pk }}" {% if selected_user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
     <div class="col-6 col-md-2">
       <label class="form-label">From</label>
       <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
@@ -44,12 +62,6 @@
     <div class="col-6 col-md-2">
       <label class="form-label">To</label>
       <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
-    </div>
-    <div class="col-12 col-md-2 d-flex gap-2">
-      <button type="submit" class="btn btn-primary flex-fill">Filter</button>
-      {% if has_filters %}
-      <a href="{% url 'mood_entry:mood_entry_list' %}" class="btn btn-outline-secondary flex-fill">Clear</a>
-      {% endif %}
     </div>
   </form>
 
@@ -68,9 +80,10 @@
           <tr>
             <th>#</th>
             <th>Mood</th>
+            {% if is_admin_view %}<th>Owner</th>{% endif %}
             <th>Rating</th>
             <th>Notes</th>
-            <th>Support Message</th>
+            {% if not is_admin_view %}<th>Support Message</th>{% endif %}
             <th>Created</th>
             <th class="w-1">Actions</th>
           </tr>
@@ -79,9 +92,18 @@
         {% for entry in mood_entries %}
         <tr data-row-id="{{ entry.id }}">
           <td class="text-muted">{{ forloop.counter0|add:mood_entries.start_index }}</td>
-          <td class="fw-semibold">{{ entry.category.name }}</td>
+          <td class="fw-semibold">
+            {{ entry.category.name }}
+            {% if entry.emotion %}
+            <div class="text-muted small fw-normal">{{ entry.emotion.emoji }} {{ entry.emotion.name }}</div>
+            {% endif %}
+          </td>
+          {% if is_admin_view %}
+          <td class="text-muted">{{ entry.user.get_full_name|default:entry.user.username|default:"—" }}</td>
+          {% endif %}
           <td><span class="badge bg-primary-lt text-primary">{{ entry.rating|default:"—" }}</span></td>
           <td class="text-muted">{{ entry.notes|default:"—" }}</td>
+          {% if not is_admin_view %}
           <td class="text-muted">
             {% with support_message=entry.messages.all|first %}
               {% if support_message %}
@@ -91,6 +113,7 @@
               {% endif %}
             {% endwith %}
           </td>
+          {% endif %}
           <td class="text-muted">{{ entry.created_at|date:"M j, Y" }}</td>
           <td>
             <div class="d-flex gap-1 align-items-center">

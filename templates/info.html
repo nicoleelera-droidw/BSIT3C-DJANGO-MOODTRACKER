@@ -16,19 +16,33 @@
   </div>
   <br>
 
-  <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-2 mb-1">
-    <form method="GET" class="w-100" style="max-width: 420px;">
-      <div class="input-group">
-        <span class="input-group-text"><i class="ti ti-search"></i></span>
-        <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search by name, address, or email...">
-        {% if query %}
-        <a href="{% url 'info:info_list' %}" class="btn btn-outline-secondary">Clear</a>
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+    <form method="GET" class="w-100" style="max-width: 680px;">
+      <div class="row g-2">
+        <div class="col-12 {% if is_admin_view %}col-md-7{% endif %}">
+          <div class="input-group">
+            <span class="input-group-text"><i class="ti ti-search"></i></span>
+            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search by name, address, or email...">
+            {% if has_filters %}
+            <a href="{% url 'info:info_list' %}" class="btn btn-outline-secondary">Clear</a>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Search</button>
+          </div>
+        </div>
+        {% if is_admin_view %}
+        <div class="col-12 col-md-5">
+          <select name="user" class="form-select" aria-label="Filter by user">
+            <option value="">All users</option>
+            {% for u in users %}
+            <option value="{{ u.pk }}" {% if selected_user == u.pk|stringformat:"s" %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+            {% endfor %}
+          </select>
+        </div>
         {% endif %}
-        <button type="submit" class="btn btn-primary">Search</button>
       </div>
     </form>
 
-    <button type="button" class="btn btn-primary mt-n4" data-bs-toggle="modal" data-bs-target="#infoModal" data-mode="create">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#infoModal" data-mode="create">
       <i class='fas fa-plus-circle me-2'></i> Add Info
     </button>
   </div>
@@ -64,6 +78,7 @@
             <th>Age</th>
             <th>Address</th>
             <th>Email</th>
+            {% if is_admin_view %}<th>Owner</th>{% endif %}
             <th class="w-1">Actions</th>
           </tr>
         </thead>
@@ -75,6 +90,9 @@
             <td><span class="badge bg-primary-lt text-primary">{{ info.age }}</span></td>
             <td class="text-muted">{{ info.address }}</td>
             <td class="text-muted">{{ info.email|default:"—" }}</td>
+            {% if is_admin_view %}
+            <td class="text-muted">{{ info.user.get_full_name|default:info.user.username|default:"—" }}</td>
+            {% endif %}
             <td>
               <div class="d-flex gap-1">
                 <button type="button" class="btn btn-ghost-secondary btn-icon btn-sm" data-bs-toggle="modal" data-bs-target="#infoModal" data-mode="edit" data-id="{{ info.id }}" data-name="{{ info.name }}" data-age="{{ info.age }}" data-address="{{ info.address }}" data-email="{{ info.email }}" title="Edit">
@@ -88,7 +106,7 @@
         </tr>
         {% empty %}
         <tr>
-            <td colspan="6">
+            <td colspan="{% if is_admin_view %}7{% else %}6{% endif %}">
                 <div class="empty py-5">
                     <div class="empty-icon">
                         <i class="fas fa-address-card fa-2x text-muted"></i>
@@ -118,19 +136,19 @@
       <ul class="pagination m-0 ms-auto">
         {% if infos.has_previous %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ infos.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">
+          <a class="page-link" href="?{{ pagination_query }}page={{ infos.previous_page_number }}">
             <i class="ti ti-chevron-left"></i> prev
           </a>
         </li>
         {% endif %}
         {% for num in infos.paginator.page_range %}
         <li class="page-item {% if infos.number == num %}active{% endif %}">
-          <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}">{{ num }}</a>
+          <a class="page-link" href="?{{ pagination_query }}page={{ num }}">{{ num }}</a>
         </li>
         {% endfor %}
         {% if infos.has_next %}
         <li class="page-item">
-          <a class="page-link" href="?page={{ infos.next_page_number }}{% if query %}&q={{ query }}{% endif %}">
+          <a class="page-link" href="?{{ pagination_query }}page={{ infos.next_page_number }}">
             next <i class="ti ti-chevron-right"></i>
           </a>
         </li>
