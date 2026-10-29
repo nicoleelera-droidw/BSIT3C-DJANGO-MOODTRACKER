@@ -53,14 +53,14 @@
         </li>
         {% endif %}
 
-        <li class="nav-item mb-1">
+        <!-- <li class="nav-item mb-1">
           <a class="nav-link {% if request.resolver_match.app_name == 'info' %}active{% endif %}" href="{% url 'info:info_list' %}">
             <span class="nav-link-icon d-md-none d-lg-inline-block">
               <i class="fa fa-address-card"></i>
             </span>
             <span class="nav-link-title">Info</span>
           </a>
-        </li>
+        </li> -->
 
         <li class="nav-item mb-1">
           <a class="nav-link {% if request.resolver_match.app_name == 'mood_category' %}active{% endif %}" href="{% url 'mood_category:mood_category_list' %}">
